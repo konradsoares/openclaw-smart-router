@@ -1,0 +1,18 @@
+{
+  "plugins": {
+    "entries": {
+      "smart-router": {
+        "enabled": true,
+        "hooks": { "allowConversationAccess": true },
+        "config": {
+          "mode": "route",
+          "telegramMode": "prefix",
+          "telegramPrefix": "!route",
+          "localAgent": "pair",
+          "cloudAgent": "main",
+          "allowedTelegramIds": ["YOUR_NUMERIC_TELEGRAM_USER_ID"]
+        }
+      }
+    }
+  }
+}

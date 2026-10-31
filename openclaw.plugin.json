@@ -1,0 +1,21 @@
+{
+  "id": "smart-router",
+  "name": "Smart Router (Local / Cloud)",
+  "description": "Opt-in Telegram routing between existing OpenClaw agents, with explicit delivery fallback.",
+  "activation": {"onCapabilities": ["hook"]},
+  "configSchema": {
+    "type": "object", "additionalProperties": false,
+    "properties": {
+      "mode": {"type": "string", "enum": ["route", "observe", "cloud-only"], "default": "route"},
+      "telegramMode": {"type": "string", "enum": ["off", "prefix"], "default": "off"},
+      "telegramPrefix": {"type": "string", "default": "!route"},
+      "localAgent": {"type": "string", "default": "pair"},
+      "cloudAgent": {"type": "string", "default": "main"},
+      "localMaxChars": {"type": "integer", "minimum": 50, "maximum": 10000, "default": 800},
+      "maxPromptChars": {"type": "integer", "minimum": 100, "maximum": 8000, "default": 1500},
+      "dispatcherTimeoutSeconds": {"type": "integer", "minimum": 10, "maximum": 300, "default": 45},
+      "allowedTelegramIds": {"type": "array", "items": {"type": "string"}, "default": []},
+      "deliveryMethod": {"type": "string", "enum": ["cli"], "default": "cli"}
+    }
+  }
+}

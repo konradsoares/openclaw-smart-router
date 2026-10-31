@@ -1,0 +1,20 @@
+name: Bug report
+description: Report a reproducible routing or delivery failure
+body:
+  - type: input
+    id: version
+    attributes:
+      label: OpenClaw version
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps (redacted)
+      description: Do not include tokens, real user IDs, personal messages, or configuration secrets.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
