@@ -15,7 +15,7 @@ Telegram command routing for OpenClaw. Send short prompts to an existing local a
 
 Explicit `!colab` requests send an immediate Telegram status message, another update if the response takes longer than the configured delay, and label the final answer `[Colab T4]` (or `[Local / pair]` after fallback). These messages do not claim that a GPU was created unless the provisioner confirms it. The Smart Router works without the Colab Provisioner installed: only `!colab` requests need its local gateway.
 
-`!colab` is text chat only. It does not support web browsing, file operations, tool calling, images, or streaming. Keep tool-oriented work on the cloud agent.
+`!colab` is text chat only. It does not support web browsing, file operations, tool calling, images, or streaming yet. Keep tool-oriented work on the cloud agent.
 
 ## Installation
 
@@ -58,7 +58,7 @@ openclaw gateway restart
 
 ## Colab Provisioner
 
-Install and enable the Colab Provisioner separately. Its systemd service must be running on the same Ubuntu host as OpenClaw:
+Install and enable the Colab Provisioner separately. Its systemd service must be running on the same host as OpenClaw:
 
 ```bash
 systemctl --user is-active openclaw-colab-gateway
@@ -77,7 +77,7 @@ Keep the gateway bound to `127.0.0.1`. The Smart Router refuses non-loopback gat
 
 ```bash
 journalctl --user -u openclaw-colab-gateway --since '1 hour ago' --no-pager | grep -Ei 'Released owned|Cleared stale|Idle cleanup failed'
-cd ~/Documents/Projects/openclaw-colab-provisioner
+cd ~/openclaw-colab-provisioner (or whatever directory you have it installed).
 unset COLAB_ACCESS_TOKEN
 node bin/colabmcp.mjs runtimes | jq '[.runtimes[]? | {name, accelerator:.runtimeSpec.accelerator}]'
 ```
