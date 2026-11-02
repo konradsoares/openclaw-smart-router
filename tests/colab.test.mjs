@@ -13,13 +13,13 @@ test('explicit colab command delivers answer',async()=>{
  const sends=[];const api={logger:{warn(){},error(){},info(){}}};
  const handler=createHandler(api,{...DEFAULTS,telegramMode:'prefix',allowedTelegramIds:['42']},{callColab:async()=>({ok:true,output:'T4 response',finalAgent:'colab'}),dispatch:async()=>{throw Error('unexpected')},sendTelegram:async(...args)=>sends.push(args)});
  await handler({channel:'telegram',content:'!route !colab hello',senderId:'42',messageId:'1'},{channelId:'telegram',conversationId:'42'});
- assert.match(sends[0][1],/Colab selecionado/);assert.equal(sends.at(-1)[1],'[Colab T4] T4 response');
+ assert.match(sends[0][1],/Colab selected/);assert.equal(sends.at(-1)[1],'[Colab T4] T4 response');
 });
 test('colab failure falls back to pair only',async()=>{
  const calls=[], sends=[];const api={logger:{warn(){},error(){},info(){}}};
  const handler=createHandler(api,{...DEFAULTS,telegramMode:'prefix',allowedTelegramIds:['42']},{callColab:async()=>{throw Error('offline')},dispatch:async(p,c,f)=>{calls.push(f);return {ok:true,output:'PAIR response',finalAgent:'pair'}},sendTelegram:async(...args)=>sends.push(args)});
  await handler({channel:'telegram',content:'!route !colab hello',senderId:'42',messageId:'2'},{channelId:'telegram',conversationId:'42'});
- assert.deepEqual(calls,['local']);assert.match(sends[0][1],/Colab selecionado/);assert.match(sends.at(-1)[1],/Local \/ pair/);assert.deepEqual(calls,['local']);
+ assert.deepEqual(calls,['local']);assert.match(sends[0][1],/Colab selected/);assert.match(sends.at(-1)[1],/Local \/ pair/);assert.deepEqual(calls,['local']);
 });
 
 test('status messages can be disabled, independent of Colab installation',async()=>{

@@ -38,9 +38,9 @@ export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callCol
           let progressTimer;
           let progressSent = Promise.resolve();
           if (cfg.colabProgress !== false) {
-            await deps.sendTelegram(msg.target, '⏳ Colab selecionado. Verificando a GPU T4; se estiver desligada, a inicialização será automática.');
+            await deps.sendTelegram(msg.target, '⏳ Colab selected. Checking the T4 GPU. If no runtime is available, one will be started automatically.');
             progressTimer = setTimeout(() => {
-              progressSent = Promise.resolve(deps.sendTelegram(msg.target, '⏳ Ainda aguardando o Colab. A GPU e o modelo podem estar sendo preparados.')).catch(e => {
+              progressSent = Promise.resolve(deps.sendTelegram(msg.target, '⏳ Still waiting for Colab. The GPU and model may be initializing.')).catch(e => {
                 api.logger.warn(`[smart-router] progress delivery failed: ${String(e.message).slice(0,120)}`);
               });
             }, Math.max(5, cfg.colabProgressDelaySeconds || 15) * 1000);
