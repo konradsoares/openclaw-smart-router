@@ -1,10 +1,11 @@
 import { dispatch } from './dispatch.mjs';
 import { parseTelegram, sendTelegram } from './telegram.mjs';
 import { classify } from './dispatch-policy.mjs';
+import { callColab } from './colab.mjs';
 
-export const DEFAULTS = { mode: 'route', telegramMode: 'off', telegramPrefix: '!route', localAgent: 'pair', cloudAgent: 'main', localMaxChars: 800, maxPromptChars: 1500, dispatcherTimeoutSeconds: 45, allowedTelegramIds: [], deliveryMethod: 'cli' };
+export const DEFAULTS = { mode: 'route', telegramMode: 'off', telegramPrefix: '!route', localAgent: 'pair', cloudAgent: 'main', localMaxChars: 800, maxPromptChars: 1500, dispatcherTimeoutSeconds: 45, allowedTelegramIds: [], deliveryMethod: 'cli', colabGatewayUrl: 'http://127.0.0.1:18080/v1/chat/completions', colabTimeoutSeconds: 300, colabFallback: 'pair', colabProgress: true, colabProgressDelaySeconds: 15, allowCloudFallback: false };
 
-export function createHandler(api, cfg, deps = { dispatch, sendTelegram }) {
+export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callColab }) {
   const inFlight = new Set();
   return async (event, ctx) => {
     if (cfg.telegramMode !== 'prefix') return;
@@ -27,12 +28,39 @@ export function createHandler(api, cfg, deps = { dispatch, sendTelegram }) {
       else if (!msg.prompt || msg.prompt.length > cfg.maxPromptChars) response = `Usage: ${cfg.telegramPrefix} <1-${cfg.maxPromptChars} characters>`;
       else {
         // Optional explicit agent overrides; retained for debugging.
-        const forced = msg.prompt.match(/^!(pair|cloud)\s+([\s\S]+)$/i);
-        const force = forced ? (forced[1].toLowerCase() === 'pair' ? 'local' : 'cloud') : 'auto';
+        const forced = msg.prompt.match(/^!(pair|cloud|colab)\s+([\s\S]+)$/i);
+        const force = forced ? (forced[1].toLowerCase() === 'pair' ? 'local' : forced[1].toLowerCase() === 'cloud' ? 'cloud' : 'colab') : 'auto';
         const actualPrompt = forced ? forced[2] : msg.prompt;
-        const result = await deps.dispatch(actualPrompt, cfg, force);
+        let result;
+        if (force === 'colab') {
+          // Colab Provisioner is optional. Feedback is phrased conservatively:
+          // the router cannot know whether a remote runtime actually exists.
+          let progressTimer;
+          let progressSent = Promise.resolve();
+          if (cfg.colabProgress !== false) {
+            await deps.sendTelegram(msg.target, '⏳ Colab selecionado. Verificando a GPU T4; se estiver desligada, a inicialização será automática.');
+            progressTimer = setTimeout(() => {
+              progressSent = Promise.resolve(deps.sendTelegram(msg.target, '⏳ Ainda aguardando o Colab. A GPU e o modelo podem estar sendo preparados.')).catch(e => {
+                api.logger.warn(`[smart-router] progress delivery failed: ${String(e.message).slice(0,120)}`);
+              });
+            }, Math.max(5, cfg.colabProgressDelaySeconds || 15) * 1000);
+          }
+          try {
+            try { result = await (deps.callColab || callColab)(actualPrompt, cfg); }
+            catch (err) {
+              api.logger.warn(`[smart-router] Colab unavailable: ${String(err.message).slice(0,160)}`);
+              if (cfg.colabFallback === 'pair') {
+                if (cfg.colabProgress !== false) await deps.sendTelegram(msg.target, '⚠️ Colab indisponível. Tentando o agente local.');
+                result = await deps.dispatch(actualPrompt, cfg, 'local');
+              } else result = {ok:false,output:'',finalAgent:'colab'};
+            }
+          } finally {
+            if (progressTimer) clearTimeout(progressTimer);
+            await progressSent;
+          }
+        } else result = await deps.dispatch(actualPrompt, cfg, force);
         route = result.finalAgent;
-        response = result.ok ? result.output : 'Smart Router failed to generate a reply. Check Gateway logs.';
+        response = result.ok ? (force === 'colab' ? `[${result.finalAgent === 'colab' ? 'Colab T4' : 'Local / pair'}] ${result.output}` : result.output) : (result.error || 'Smart Router failed to generate a reply. Check Gateway logs.');
       }
       await deps.sendTelegram(msg.target, response);
       api.logger.info(`[smart-router] delivered messageId=${msg.messageId} agent=${route}`);

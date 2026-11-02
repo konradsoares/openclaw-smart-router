@@ -1,21 +1,114 @@
 {
   "id": "smart-router",
-  "name": "Smart Router (Local / Cloud)",
-  "description": "Opt-in Telegram routing between existing OpenClaw agents, with explicit delivery fallback.",
-  "activation": {"onCapabilities": ["hook"]},
+  "name": "Smart Router (Local / Colab / Cloud)",
+  "description": "Telegram routing across local, Colab MCP gateway, and cloud.",
+  "activation": {
+    "onCapabilities": [
+      "hook"
+    ]
+  },
   "configSchema": {
-    "type": "object", "additionalProperties": false,
+    "type": "object",
+    "additionalProperties": false,
     "properties": {
-      "mode": {"type": "string", "enum": ["route", "observe", "cloud-only"], "default": "route"},
-      "telegramMode": {"type": "string", "enum": ["off", "prefix"], "default": "off"},
-      "telegramPrefix": {"type": "string", "default": "!route"},
-      "localAgent": {"type": "string", "default": "pair"},
-      "cloudAgent": {"type": "string", "default": "main"},
-      "localMaxChars": {"type": "integer", "minimum": 50, "maximum": 10000, "default": 800},
-      "maxPromptChars": {"type": "integer", "minimum": 100, "maximum": 8000, "default": 1500},
-      "dispatcherTimeoutSeconds": {"type": "integer", "minimum": 10, "maximum": 300, "default": 45},
-      "allowedTelegramIds": {"type": "array", "items": {"type": "string"}, "default": []},
-      "deliveryMethod": {"type": "string", "enum": ["cli"], "default": "cli"}
+      "mode": {
+        "type": "string",
+        "enum": [
+          "route",
+          "observe",
+          "cloud-only"
+        ],
+        "default": "route"
+      },
+      "telegramMode": {
+        "type": "string",
+        "enum": [
+          "off",
+          "prefix"
+        ],
+        "default": "off"
+      },
+      "telegramPrefix": {
+        "type": "string",
+        "default": "!route"
+      },
+      "localAgent": {
+        "type": "string",
+        "default": "pair"
+      },
+      "cloudAgent": {
+        "type": "string",
+        "default": "main"
+      },
+      "localMaxChars": {
+        "type": "integer",
+        "minimum": 50,
+        "maximum": 10000,
+        "default": 800
+      },
+      "maxPromptChars": {
+        "type": "integer",
+        "minimum": 100,
+        "maximum": 8000,
+        "default": 1500
+      },
+      "dispatcherTimeoutSeconds": {
+        "type": "integer",
+        "minimum": 10,
+        "maximum": 300,
+        "default": 45
+      },
+      "allowedTelegramIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "default": []
+      },
+      "deliveryMethod": {
+        "type": "string",
+        "enum": [
+          "cli"
+        ],
+        "default": "cli"
+      },
+      "colabGatewayUrl": {
+        "type": "string",
+        "default": "http://127.0.0.1:18080/v1/chat/completions"
+      },
+      "colabEnvFile": {
+        "type": "string"
+      },
+      "colabTimeoutSeconds": {
+        "type": "integer",
+        "minimum": 30,
+        "maximum": 900,
+        "default": 300
+      },
+      "colabFallback": {
+        "type": "string",
+        "enum": [
+          "pair",
+          "none"
+        ],
+        "default": "pair"
+      },
+      "allowCloudFallback": {
+        "type": "boolean",
+        "default": false,
+        "description": "Allow paid cloud fallback after a failed automatic local request."
+      },
+      "colabProgress": {
+        "type": "boolean",
+        "default": true,
+        "description": "Send Telegram status messages for explicit Colab requests."
+      },
+      "colabProgressDelaySeconds": {
+        "type": "integer",
+        "minimum": 5,
+        "maximum": 120,
+        "default": 15
+      }
     }
   }
 }

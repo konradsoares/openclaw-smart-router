@@ -1,11 +1,20 @@
 {
   "name": "openclaw-smart-router-community",
-  "version": "0.3.2-beta.1",
+  "version": "0.4.0-beta.3",
   "private": true,
-  "description": "Explicit local/cloud agent routing for OpenClaw with Telegram delivery fallback",
+  "description": "Opt-in Telegram routing across local, optional Colab and cloud backends",
   "type": "module",
   "license": "MIT",
-  "engines": {"node": ">=22"},
-  "openclaw": {"extensions": ["./index.js"]},
-  "scripts": {"test": "node --test tests/*.test.mjs", "check": "node --check index.js && node --check dispatch.mjs && node --check telegram.mjs && node --check dispatch-policy.mjs"}
+  "engines": {
+    "node": ">=22"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ]
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check index.js && node --check dispatch.mjs && node --check telegram.mjs && node --check dispatch-policy.mjs && node --check colab.mjs"
+  }
 }
