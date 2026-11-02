@@ -32,7 +32,7 @@ Colab support is optional and independent of the Smart Router installation. When
 
 ## Install
 
-Install directly from GitHub after the desired version has been published:
+Install directly from GitHub (the default branch contains the latest published changes):
 
 ```bash
 openclaw plugins install \
@@ -46,9 +46,9 @@ git clone https://github.com/konradsoares/openclaw-smart-router.git
 openclaw plugins install -l ./openclaw-smart-router
 ```
 
-To pin a published beta release, replace `@main` with its Git tag, such as `@v0.4.0-beta.3`, once available in the repository.
+To install a reproducible release, replace `@main` with an existing Git tag, for example `@v0.4.0-beta.3`. A tag is immutable and may not contain fixes subsequently committed to `main`.
 
-Review the source before granting permissions. Local/Git plugin installs may require explicit installation-policy confirmation. See the [OpenClaw plugin documentation](https://docs.openclaw.ai/plugin).
+Review the source before accepting the non-ClawHub Git installation warning. Installing the package does **not** necessarily enable the plugin or its Telegram routing: complete the configuration below before testing. Git-installed plugins may display a provenance warning; review the source and permissions rather than assuming that a warning means the plugin is verified. See the [OpenClaw plugin documentation](https://docs.openclaw.ai/plugin).
 
 ### Upgrade an existing installation
 
@@ -64,17 +64,24 @@ Use the plugin manager to install the published Git revision. Avoid creating a s
 
 Configure the plugin using the OpenClaw CLI after installation.
 
-### 1. Enable routing
+### 1. Enable the plugin and Telegram routing
+
+**Required on a fresh installation.** The installed plugin may be disabled, and `telegramMode` defaults to `off`. If either is left disabled, `!route` is passed to the normal OpenClaw agent instead of the Smart Router. That agent may use a paid provider.
 
 ```bash
-openclaw config set \
-  plugins.entries.smart-router.config.mode route
+openclaw plugins enable smart-router
 
 openclaw config set \
-  plugins.entries.smart-router.config.telegramMode prefix
+  plugins.entries.smart-router.config.mode \
+  '"route"' --strict-json
 
 openclaw config set \
-  plugins.entries.smart-router.hooks.allowConversationAccess true
+  plugins.entries.smart-router.config.telegramMode \
+  '"prefix"' --strict-json
+
+openclaw config set \
+  plugins.entries.smart-router.hooks.allowConversationAccess \
+  true --strict-json
 ```
 
 Prefix mode intercepts messages beginning with `!route`. Other messages continue through the normal OpenClaw processing flow.
@@ -97,22 +104,22 @@ openclaw config set \
   '["USER_ID_1","USER_ID_2"]' --strict-json
 ```
 
-The allowlist is empty by default. Only explicitly authorized senders may use the router's Telegram interception.
+The allowlist is empty by default. **A fresh installation will not route any Telegram messages until an ID is added.** Only explicitly authorized senders may use the router's Telegram interception.
 
 ### 3. Configure local and cloud agents
 
 ```bash
 openclaw config set \
-  plugins.entries.smart-router.config.localAgent pair
+  plugins.entries.smart-router.config.localAgent '"pair"' --strict-json
 
 openclaw config set \
-  plugins.entries.smart-router.config.cloudAgent main
+  plugins.entries.smart-router.config.cloudAgent '"main"' --strict-json
 ```
 
 - `pair` — local inference using NVIDIA PAIR, llama.cpp, or another configured provider.
 - `main` — cloud-backed inference using OpenAI or another cloud provider.
 
-Any existing agent IDs can be used. The Smart Router does not create or reconfigure these agents.
+Any existing agent IDs can be used. The Smart Router does not create or reconfigure these agents. Verify agent IDs and model assignments in OpenClaw before testing; an incorrect agent mapping may invoke an unexpected provider.
 
 ### 4. Optional routing settings
 
@@ -164,7 +171,7 @@ A sample configuration is available in `examples/plugin-config.example.json`.
 
 The Colab Provisioner is installed and managed separately. The Smart Router does not require it for `!route`, `!route !pair`, or `!route !cloud`.
 
-Install and configure the [OpenClaw Colab Provisioner](https://github.com/konradsoares/openclaw-colab-provisioner), then verify its gateway service:
+Install and configure the [OpenClaw Colab Provisioner](https://github.com/konradsoares/openclaw-colab-provisioner) **and its separate Autopilot gateway service**, then verify the service. Installing the provisioner plugin alone does not start the HTTP gateway. Alternatively, the Smart Router can use a separately running compatible local gateway without the provisioner plugin:
 
 ```bash
 systemctl --user is-active openclaw-colab-gateway
@@ -190,45 +197,52 @@ openclaw config set \
   true --strict-json
 ```
 
-The integration reads `COLAB_GATEWAY_API_KEY` from the local gateway environment file by default. Do not store Google OAuth credentials in the Smart Router configuration. The gateway endpoint must be bound to loopback; non-loopback addresses are rejected.
+The integration reads `COLAB_GATEWAY_API_KEY` from the local gateway environment file by default. Verify that the service is listening on loopback before attempting `!colab`. Do not store Google OAuth credentials in the Smart Router configuration. The gateway endpoint must be bound to loopback; non-loopback addresses are rejected.
 
 When a Colab request arrives, the router sends an immediate status message. If it takes longer than the configured delay, it sends another notice. The final response is labeled `[Colab T4]`, or `[Local / pair]` if the configured fallback ran. Progress messages indicate that the Colab backend is being checked; they do not confirm GPU allocation.
 
 Colab requests are currently text-only and do not implement OpenClaw tool calls, files, images, or streaming. Tool-capable model integration is planned but is not supported in this release.
 
-### 6. Verify configuration
+### 6. Validate, restart and verify (required)
+
+After enabling routing, allowing your Telegram sender ID and configuring agents:
 
 ```bash
-openclaw config get plugins.entries.smart-router
+openclaw config set \
+  plugins.entries.smart-router.config.allowCloudFallback \
+  false --strict-json
+
+openclaw config validate
+openclaw gateway restart
+
 openclaw plugins info smart-router
+openclaw config get plugins.entries.smart-router.config
 openclaw plugins inspect smart-router --runtime --json
 openclaw plugins doctor
-openclaw config validate
 ```
 
-Restart the OpenClaw Gateway if needed:
+Before testing, confirm:
 
-```bash
-openclaw gateway restart
-```
+- `openclaw plugins info smart-router` shows **Status: enabled** and the expected version.
+- `telegramMode` is `prefix`, not `off`.
+- `allowedTelegramIds` contains the sender's numeric Telegram user ID, not an empty array.
+- `localAgent` points to an existing local agent; `cloudAgent` points to the intended cloud agent.
+- `allowCloudFallback` is `false` if automatic paid fallback is not desired.
+- Runtime inspection reports the `before_dispatch` hook and `allowConversationAccess: true`.
 
-The Smart Router should be enabled with `before_dispatch` available. The `before_model_resolve` hook is observational only and does not override the agents' model selection.
+The `before_model_resolve` hook is observational only and does not override the agents' model selection. Ordinary Telegram messages without `!route` still follow the normal OpenClaw flow.
 
 ## Test
 
 Send these commands to your Telegram bot:
 
-**Check message delivery:**
+**Check initial routing (recommended first test):**
 
 ```text
-!route delivery probe
+!route !pair Reply exactly: LOCAL ROUTER READY
 ```
 
-Expected response:
-
-```text
-SMART ROUTER DELIVERY OK
-```
+The response should be delivered by the configured local agent. Its exact wording depends on that model; check the logs for the selected agent instead of relying on a fixed output string. If you see an error from your normal/default cloud agent, recheck `telegramMode`, `allowedTelegramIds`, and the plugin enabled state.
 
 **Check automatic local classification:**
 
@@ -289,7 +303,7 @@ For the optional Colab gateway:
 journalctl --user -u openclaw-colab-gateway -f
 ```
 
-To check assigned runtimes without printing access tokens:
+To check assigned runtimes without printing access tokens (if the Colab Provisioner project is installed locally):
 
 ```bash
 unset COLAB_ACCESS_TOKEN
@@ -308,6 +322,17 @@ npm run check
 ```
 
 Unit tests mock OpenClaw CLI interactions, Telegram delivery, and the Colab gateway. They require no GPU, Telegram token, or paid API account. Automated tests do not replace end-to-end Telegram validation.
+
+## Troubleshooting a fresh GitHub installation
+
+| Symptom | What to check |
+|---|---|
+| `!route` is handled by the default agent (or triggers a cloud/Codex quota error) | `openclaw plugins info smart-router` must show `enabled`; verify `telegramMode: prefix` and a non-empty `allowedTelegramIds` |
+| Plugin is enabled but no routed response is delivered | Confirm numeric Telegram sender ID, `allowConversationAccess`, Gateway restart, and `openclaw logs --follow` |
+| `!route !pair` fails | Test the configured `localAgent` independently; the plugin does not install a local model |
+| `!route !colab` times out or falls back | Check `systemctl --user status openclaw-colab-gateway` and its journal; a cold T4 startup may be slow |
+| `provenance-invalid` warning | Git source provenance is not verified by the plugin registry; inspect the installed source and permissions |
+| Config validation rejects a new setting | Confirm the installed plugin version and its `configSchema` using `openclaw plugins inspect smart-router --runtime --json` |
 
 ## Known limitations
 
