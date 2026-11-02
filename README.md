@@ -19,11 +19,7 @@ Telegram (!route ...)
 
 Plain-text requests route to the local agent by default, including multiline prompts within the configured prompt limit. Requests requiring tools are blocked from automatic execution until the user explicitly selects an appropriate route. Local failures do not trigger paid cloud fallback unless `allowCloudFallback` is enabled. An explicitly forced local route never falls back to cloud.
 
-<<<<<<< HEAD
-`!colab` is text chat only. It does not support web browsing, file operations, tool calling, images, or streaming yet. Keep tool-oriented work on the cloud agent.
-=======
 Colab support is optional and independent of the Smart Router installation. When enabled, `!route !colab` sends status updates during slow startup and labels the final response with the backend that actually answered.
->>>>>>> 51d1cf2 (README Update)
 
 ## Prerequisites
 
@@ -52,9 +48,6 @@ openclaw plugins install -l ./openclaw-smart-router
 
 To pin a published beta release, replace `@main` with its Git tag, such as `@v0.4.0-beta.3`, once available in the repository.
 
-<<<<<<< HEAD
-Install and enable the Colab Provisioner separately. Its systemd service must be running on the same host as OpenClaw:
-=======
 Review the source before granting permissions. Local/Git plugin installs may require explicit installation-policy confirmation. See the [OpenClaw plugin documentation](https://docs.openclaw.ai/plugin).
 
 ### Upgrade an existing installation
@@ -172,7 +165,6 @@ A sample configuration is available in `examples/plugin-config.example.json`.
 The Colab Provisioner is installed and managed separately. The Smart Router does not require it for `!route`, `!route !pair`, or `!route !cloud`.
 
 Install and configure the [OpenClaw Colab Provisioner](https://github.com/konradsoares/openclaw-colab-provisioner), then verify its gateway service:
->>>>>>> 51d1cf2 (README Update)
 
 ```bash
 systemctl --user is-active openclaw-colab-gateway
@@ -181,12 +173,6 @@ systemctl --user is-active openclaw-colab-gateway
 Configure the route:
 
 ```bash
-<<<<<<< HEAD
-journalctl --user -u openclaw-colab-gateway --since '1 hour ago' --no-pager | grep -Ei 'Released owned|Cleared stale|Idle cleanup failed'
-cd ~/openclaw-colab-provisioner (or whatever directory you have it installed).
-unset COLAB_ACCESS_TOKEN
-node bin/colabmcp.mjs runtimes | jq '[.runtimes[]? | {name, accelerator:.runtimeSpec.accelerator}]'
-=======
 openclaw config set \
   plugins.entries.smart-router.config.colabGatewayUrl \
   '"http://127.0.0.1:18080/v1/chat/completions"' --strict-json
@@ -202,14 +188,13 @@ openclaw config set \
 openclaw config set \
   plugins.entries.smart-router.config.colabProgress \
   true --strict-json
->>>>>>> 51d1cf2 (README Update)
 ```
 
 The integration reads `COLAB_GATEWAY_API_KEY` from the local gateway environment file by default. Do not store Google OAuth credentials in the Smart Router configuration. The gateway endpoint must be bound to loopback; non-loopback addresses are rejected.
 
 When a Colab request arrives, the router sends an immediate status message. If it takes longer than the configured delay, it sends another notice. The final response is labeled `[Colab T4]`, or `[Local / pair]` if the configured fallback ran. Progress messages indicate that the Colab backend is being checked; they do not confirm GPU allocation.
 
-Colab requests are currently text-only and do not implement OpenClaw tool calls, files, images, or streaming yet. Tool-capable model integration is planned but is not supported in this release.
+Colab requests are currently text-only and do not implement OpenClaw tool calls, files, images, or streaming. Tool-capable model integration is planned but is not supported in this release.
 
 ### 6. Verify configuration
 
