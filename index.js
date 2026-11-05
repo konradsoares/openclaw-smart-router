@@ -2,11 +2,13 @@ import { dispatch } from './dispatch.mjs';
 import { parseTelegram, sendTelegram } from './telegram.mjs';
 import { classify } from './dispatch-policy.mjs';
 import { callColab, getColabRuntimeStatus } from './colab.mjs';
+import { ColabHistory } from './colab-history.mjs';
 
 export const DEFAULTS = { mode: 'route', telegramMode: 'off', telegramPrefix: '!route', localAgent: 'pair', cloudAgent: 'main', localMaxChars: 800, maxPromptChars: 1500, dispatcherTimeoutSeconds: 45, allowedTelegramIds: [], deliveryMethod: 'cli', colabGatewayUrl: 'http://127.0.0.1:18080/v1/chat/completions', colabTimeoutSeconds: 300, colabFallback: 'pair', colabProgress: true, colabProgressDelaySeconds: 15, allowCloudFallback: false };
 
 export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callColab, getColabRuntimeStatus }) {
   const inFlight = new Set();
+  const colabHistory = new ColabHistory();
   return async (event, ctx) => {
     if (cfg.telegramMode !== 'prefix') return;
     const msg = parseTelegram(event, ctx, cfg);
@@ -50,17 +52,7 @@ export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callCol
           }
           try {
             try {
-              result = await (deps.callColab || callColab)(actualPrompt, cfg);
-              if(cfg.colabProgress!==false && result.ok && result.finalAgent==='colab' && before) {
-                try {
-                  const after=await (deps.getColabRuntimeStatus||getColabRuntimeStatus)(cfg);
-                  if(after.runtime && after.status==='existing') {
-                    const reused=before.runtime===after.runtime && before.status==='existing';
-                    const label=after.runtime.slice(-8);
-                    await deps.sendTelegram(msg.target,reused?'♻️ Colab: runtime reutilizado ('+label+').':'✅ Colab: novo runtime preparado ('+label+').');
-                  }
-                } catch(e) {api.logger.warn('[smart-router] postflight status unavailable: '+String(e.message).slice(0,120));}
-              }
+              result = await colabHistory.run(msg.target,actualPrompt,messages=>(deps.callColab || callColab)(messages,cfg));
             }
             catch (err) {
               api.logger.warn(`[smart-router] Colab unavailable: ${String(err.message).slice(0,160)}`);
@@ -72,6 +64,17 @@ export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callCol
           } finally {
             if (progressTimer) clearTimeout(progressTimer);
             await progressSent;
+          }
+          // Show reuse/new-runtime status only after all wait notifications are complete.
+          if(cfg.colabProgress!==false && result?.ok && result.finalAgent==='colab' && before) {
+            try {
+              const after=await (deps.getColabRuntimeStatus||getColabRuntimeStatus)(cfg);
+              if(after.runtime && after.status==='existing') {
+                const reused=before.runtime===after.runtime && before.status==='existing';
+                const label=after.runtime.slice(-8);
+                await deps.sendTelegram(msg.target,reused?'♻️ Colab: runtime reutilizado ('+label+').':'✅ Colab: novo runtime preparado ('+label+').');
+              }
+            } catch(e) {api.logger.warn('[smart-router] postflight status unavailable: '+String(e.message).slice(0,120));}
           }
         } else result = await deps.dispatch(actualPrompt, cfg, force, undefined, {sessionKey:msg.target});
         route = result.finalAgent;

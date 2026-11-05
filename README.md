@@ -364,3 +364,7 @@ For routed local/cloud CLI calls, the router now derives a stable opaque session
 ### Colab runtime visibility (experimental)
 
 The Telegram router checks the authenticated, local Colab runtime-status endpoint once before a Colab inference and once after a successful inference. It announces whether the GPU is previously available or must be prepared, then reports whether the same runtime was reused. Probes are read-only, not keep-alives, and do not change the idle timeout. If the gateway is older or status checking fails, inference still proceeds normally with generic progress messages. All runtime IDs are shortened in Telegram.
+
+### Colab conversation context (experimental)
+
+Direct Telegram Colab requests now send a bounded, per-conversation user/assistant history (up to eight recent exchanges, capped at 12,000 characters). Conversations are isolated by Telegram conversation target; no history is sent to the local/cloud routes. Only successful Colab replies are added. Calls from the same conversation are serialized to preserve ordering. History is process-local and will be cleared when the OpenClaw gateway restarts. This is **not persistent memory**; model context is rebuilt from the recent messages on each request, independent of GPU lifetime.

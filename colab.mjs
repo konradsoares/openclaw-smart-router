@@ -29,10 +29,13 @@ export async function callColab(prompt, cfg = {}, {fetchImpl=fetch, readFileImpl
   const envPath = cfg.colabEnvFile || join(homedir(), '.config/openclaw-colab/gateway.env');
   const apiKey = parseEnvValue(await readFileImpl(envPath, 'utf8'), 'COLAB_GATEWAY_API_KEY');
   if (!apiKey) throw Error('Missing COLAB_GATEWAY_API_KEY in gateway.env');
+  const messages=Array.isArray(prompt)?prompt:[{role:'user',content:prompt}];
+  if(!messages.length || messages.length>32 || messages.some(m=>!m||!['user','assistant'].includes(m.role)||typeof m.content!=='string'||m.content.length>12000))
+    throw Error('Invalid Colab conversation messages');
   const response = await fetchImpl(url, {
     method: 'POST',
     headers: {'Authorization': `Bearer ${apiKey}`, 'Content-Type':'application/json'},
-    body: JSON.stringify({model: 'colab-t4', stream: false, messages:[{role:'user',content:prompt}]}),
+    body: JSON.stringify({model: 'colab-t4', stream: false, messages}),
     signal: AbortSignal.timeout((cfg.colabTimeoutSeconds || 300) * 1000)
   });
   const data = await response.json().catch(() => ({}));
