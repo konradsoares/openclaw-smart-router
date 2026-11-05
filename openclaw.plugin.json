@@ -172,7 +172,8 @@
           "systemTokens": {
             "type": "integer",
             "minimum": 0,
-            "default": 1600
+            "default": 6000,
+            "description": "Minimum 6000 effective tokens are reserved for the OpenClaw runtime regardless of this setting; observed staging preflight exceeded 5900 tokens."
           },
           "unknownHistoryTokens": {
             "type": "integer",

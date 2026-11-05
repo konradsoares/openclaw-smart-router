@@ -28,7 +28,7 @@ Example plugin settings (not automatically installed):
       colabMaxOutputTokens: 1024
       cloudModel: openai/gpt-6-astra
       allowPaidCloud: false
-      systemTokens: 1600
+      systemTokens: 6000
       unknownHistoryTokens: 1024
       toolTokens: 2000
       safetyFraction: 0.15
@@ -36,3 +36,9 @@ Example plugin settings (not automatically installed):
 The example above does not enable paid fallback or native Colab routing. Tool-capable tasks require explicit supportsTools in the selected local model profile; model routing does not change OpenClaw tool authorization.
 
 Before enabling production: register Colab as a normal provider in isolated staging; validate tool compatibility; test same-session local-to-Colab and Colab-to-cloud model changes, short/long history, GPU disappearance, multilingual replies, gateway restart and complete rollback. No live cross-provider continuity has yet been validated.
+
+## Real staging findings (2026-11-05)
+
+The same isolated OpenClaw session stage-native-002 successfully remembered ORBIT-4729 through PAIR -> Colab -> PAIR and after a staging Gateway restart. No paid API was used. However OpenClaw reported a 5,975-token preflight versus a 3,072-token usable budget on the 4,096-token Colab context. It performed context compaction; this success is **not** proof that long conversation history remains intact.
+
+Native model selection now reserves at least **6,000 tokens** for the OpenClaw runtime/system/tool overhead. As a result the existing 4K Colab configuration is intentionally **ineligible** for native fallback until a larger real Ollama context is provisioned and validated (prefer 16K for room for history). This floor is independent of a lower configured systemTokens value. The existing direct !route !colab route still works for simpler prompts, but it is a separate path.

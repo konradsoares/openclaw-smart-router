@@ -74,7 +74,8 @@ export function selectNativeModels({prompt,historyTokens=0,config={},inventory=n
   });
   return chooseRoute({
     prompt,historyTokens,profiles,availableModels,
-    systemTokens:routes.systemTokens??1600,
+    // OpenClaw adds substantial runtime/tool/system context not visible at model-resolve time.
+    systemTokens:Math.max(6000,routes.systemTokens??6000),
     toolTokens:routes.toolTokens??2000,
     safetyFraction:routes.safetyFraction??0.15,
     colabModel:routes.colabModel||'',

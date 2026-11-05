@@ -54,9 +54,9 @@ test('native routing preserves OpenClaw session and uses model overrides',async(
  const router=createNativeRouting({cfg:config,inventory:{get:async()=>inventory},logger:{warn(){},info(){}}});
  const ctx={agentId:'main',channelId:'telegram',sessionKey:'chat-42'};
  const first=await router.resolve({prompt:'hello'},ctx);
- assert.equal(first.providerOverride,'nvpair');assert.equal(first.modelOverride,'small');
- assert.deepEqual(first.fallbacksOverride,['nvpair/big']);
- router.promptContext({messages:[{role:'user',content:'x'.repeat(18000)}]},ctx);
+ assert.equal(first.providerOverride,'nvpair');assert.equal(first.modelOverride,'big');
+ assert.deepEqual(first.fallbacksOverride,[]);
+ router.promptContext({messages:[{role:'user',content:'x'.repeat(1000)}]},ctx);
  const second=await router.resolve({prompt:'hello'},ctx);
  assert.equal(second.modelOverride,'big');
  assert.equal(await router.resolve({prompt:'hello'},{agentId:'main',channelId:'cli',sessionKey:'chat-42'}),undefined);
@@ -79,4 +79,14 @@ test('language policy is separate from English operational messages',async()=>{
  assert.equal(body.messages[0].role,'system');
  assert.match(body.messages[0].content,/same language/);
  assert.equal(body.messages.at(-1).content,'Explique o erro em português');
+});
+
+test('realistic native overhead excludes unsafe 4K Colab fallback',()=>{
+ const route=selectNativeModels({prompt:'hello',config:{nativeRouting:{localModels:[],colabModel:'colab/colab-t4',colabContextWindow:4096,systemTokens:400,unknownHistoryTokens:0}},inventory:new Map()});
+ assert.equal(route.model,null);
+ assert.ok(route.required>4096);
+});
+test('native Colab becomes eligible only with adequate real context window',()=>{
+ const route=selectNativeModels({prompt:'hello',config:{nativeRouting:{localModels:[],colabModel:'colab/colab-t4',colabContextWindow:16384,systemTokens:400,unknownHistoryTokens:0}},inventory:new Map()});
+ assert.equal(route.model,'colab/colab-t4');
 });
