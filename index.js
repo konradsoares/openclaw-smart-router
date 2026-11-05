@@ -51,14 +51,14 @@ export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callCol
               api.logger.warn(`[smart-router] Colab unavailable: ${String(err.message).slice(0,160)}`);
               if (cfg.colabFallback === 'pair') {
                 if (cfg.colabProgress !== false) await deps.sendTelegram(msg.target, '⚠️ Colab indisponível. Tentando o agente local.');
-                result = await deps.dispatch(actualPrompt, cfg, 'local');
+                result = await deps.dispatch(actualPrompt, cfg, 'local', undefined, {sessionKey:msg.target});
               } else result = {ok:false,output:'',finalAgent:'colab'};
             }
           } finally {
             if (progressTimer) clearTimeout(progressTimer);
             await progressSent;
           }
-        } else result = await deps.dispatch(actualPrompt, cfg, force);
+        } else result = await deps.dispatch(actualPrompt, cfg, force, undefined, {sessionKey:msg.target});
         route = result.finalAgent;
         response = result.ok ? (force === 'colab' ? `[${result.finalAgent === 'colab' ? 'Colab T4' : 'Local / pair'}] ${result.output}` : result.output) : (result.error || 'Smart Router failed to generate a reply. Check Gateway logs.');
       }

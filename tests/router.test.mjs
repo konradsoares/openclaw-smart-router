@@ -1,3 +1,4 @@
+import { dispatch } from '../dispatch.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { classify } from '../dispatch-policy.mjs';
@@ -25,4 +26,20 @@ test('unknown sender not claimed', async () => {
  const api={logger:{info(){},warn(){},error(){}}};
  const fn=createHandler(api,{...DEFAULTS,telegramMode:'prefix',allowedTelegramIds:['42']},{dispatch:async()=>{throw Error('unexpected')},sendTelegram:async()=>{throw Error('unexpected')}});
  assert.equal(await fn({channel:'telegram',content:'!route hello',senderId:'100',messageId:'2'}, {channelId:'telegram',conversationId:'100'}),undefined);
+});
+
+test('same Telegram conversation reuses OpenClaw session across requests', async()=>{
+ const sessions=[];
+ const runner=async(_cmd,args)=>{sessions.push(args[args.indexOf('--session-id')+1]);return {ok:true,stdout:'ok'};};
+ await dispatch('hello',{},'local',runner,{sessionKey:'telegram:42'});
+ await dispatch('remember me',{},'local',runner,{sessionKey:'telegram:42'});
+ assert.equal(sessions[0],sessions[1]);
+ assert.ok(sessions[0].startsWith('smart-router-'));
+ assert.ok(!sessions[0].includes('42'));
+});
+test('different Telegram conversations have different sessions', async()=>{
+ const sessions=[];const runner=async(_cmd,args)=>{sessions.push(args[args.indexOf('--session-id')+1]);return {ok:true,stdout:'ok'};};
+ await dispatch('hello',{},'local',runner,{sessionKey:'telegram:42'});
+ await dispatch('hello',{},'local',runner,{sessionKey:'telegram:43'});
+ assert.notEqual(sessions[0],sessions[1]);
 });
