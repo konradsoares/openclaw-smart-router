@@ -360,3 +360,7 @@ MIT. Community project; not affiliated with NVIDIA, Google, OpenAI, or the OpenC
 ### Telegram session continuity (staging change)
 
 For routed local/cloud CLI calls, the router now derives a stable opaque session identifier from the Telegram target. This preserves repeated requests to the **same OpenClaw agent** across messages. Separate agents may still have independent session stores, and the direct Colab HTTP route still needs explicit history propagation; cross-backend memory is not yet solved.
+
+### Colab runtime visibility (experimental)
+
+The Telegram router checks the authenticated, local Colab runtime-status endpoint once before a Colab inference and once after a successful inference. It announces whether the GPU is previously available or must be prepared, then reports whether the same runtime was reused. Probes are read-only, not keep-alives, and do not change the idle timeout. If the gateway is older or status checking fails, inference still proceeds normally with generic progress messages. All runtime IDs are shortened in Telegram.

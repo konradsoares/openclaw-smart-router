@@ -9,6 +9,20 @@ export function parseEnvValue(content, key) {
   if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
   return value;
 }
+export async function getColabRuntimeStatus(cfg={}, {fetchImpl=fetch,readFileImpl=readFile}={}) {
+  const url=new URL(cfg.colabGatewayUrl || 'http://127.0.0.1:18080/v1/chat/completions');
+  if(url.protocol!=='http:' || !['127.0.0.1','localhost','[::1]'].includes(url.hostname) || url.pathname!=='/v1/chat/completions') throw Error('Colab gateway must use the local loopback endpoint');
+  url.pathname='/v1/runtime-status';
+  const envPath=cfg.colabEnvFile || join(homedir(),'.config/openclaw-colab/gateway.env');
+  const apiKey=parseEnvValue(await readFileImpl(envPath,'utf8'),'COLAB_GATEWAY_API_KEY');
+  if(!apiKey)throw Error('Missing COLAB_GATEWAY_API_KEY in gateway.env');
+  const response=await fetchImpl(url,{method:'GET',headers:{Authorization:'Bearer '+apiKey},signal:AbortSignal.timeout(12000)});
+  if(!response.ok)throw Error('Runtime status HTTP '+response.status);
+  const data=await response.json();
+  if(!['existing','starting','missing','absent'].includes(data?.status))throw Error('Invalid runtime status');
+  if(data.runtime!==null && data.runtime!==undefined && !/^runtimes\/[a-z0-9][a-z0-9-]{0,62}$/.test(data.runtime))throw Error('Invalid runtime id');
+  return {status:data.status,runtime:data.runtime||null};
+}
 export async function callColab(prompt, cfg = {}, {fetchImpl=fetch, readFileImpl=readFile}={}) {
   const url = new URL(cfg.colabGatewayUrl || 'http://127.0.0.1:18080/v1/chat/completions');
   if (url.protocol !== 'http:' || !['127.0.0.1','localhost','[::1]'].includes(url.hostname) || url.pathname !== '/v1/chat/completions') throw Error('Colab gateway must use the local loopback endpoint');

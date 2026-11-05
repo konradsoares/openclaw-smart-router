@@ -1,11 +1,11 @@
 import { dispatch } from './dispatch.mjs';
 import { parseTelegram, sendTelegram } from './telegram.mjs';
 import { classify } from './dispatch-policy.mjs';
-import { callColab } from './colab.mjs';
+import { callColab, getColabRuntimeStatus } from './colab.mjs';
 
 export const DEFAULTS = { mode: 'route', telegramMode: 'off', telegramPrefix: '!route', localAgent: 'pair', cloudAgent: 'main', localMaxChars: 800, maxPromptChars: 1500, dispatcherTimeoutSeconds: 45, allowedTelegramIds: [], deliveryMethod: 'cli', colabGatewayUrl: 'http://127.0.0.1:18080/v1/chat/completions', colabTimeoutSeconds: 300, colabFallback: 'pair', colabProgress: true, colabProgressDelaySeconds: 15, allowCloudFallback: false };
 
-export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callColab }) {
+export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callColab, getColabRuntimeStatus }) {
   const inFlight = new Set();
   return async (event, ctx) => {
     if (cfg.telegramMode !== 'prefix') return;
@@ -33,12 +33,15 @@ export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callCol
         const actualPrompt = forced ? forced[2] : msg.prompt;
         let result;
         if (force === 'colab') {
-          // Colab Provisioner is optional. Feedback is phrased conservatively:
-          // the router cannot know whether a remote runtime actually exists.
+          // One-shot authenticated status check; never acts as a keep-alive.
+          let before=null;
+          try {before=await (deps.getColabRuntimeStatus||getColabRuntimeStatus)(cfg);}
+          catch(e) {api.logger.warn('[smart-router] runtime visibility unavailable: '+String(e.message).slice(0,120));}
           let progressTimer;
           let progressSent = Promise.resolve();
           if (cfg.colabProgress !== false) {
-            await deps.sendTelegram(msg.target, '⏳ Colab selected. Checking the T4 GPU. If no runtime is available, one will be started automatically.');
+            const initial=before?.status==='existing'?'♻️ Colab: GPU existente detectada, verificando Ollama. Deve responder mais rápido.':before?.status==='starting'?'⏳ Colab: runtime existente ainda sendo preparado. Pode demorar alguns minutos.':before?.status==='missing'||before?.status==='absent'?'🆕 Colab: não há GPU própria disponível. Preparando um novo runtime; a primeira resposta pode demorar alguns minutos.':'⏳ Colab selected. Checking the T4 GPU. If no runtime is available, one will be started automatically.';
+            await deps.sendTelegram(msg.target,initial);
             progressTimer = setTimeout(() => {
               progressSent = Promise.resolve(deps.sendTelegram(msg.target, '⏳ Still waiting for Colab. The GPU and model may be initializing.')).catch(e => {
                 api.logger.warn(`[smart-router] progress delivery failed: ${String(e.message).slice(0,120)}`);
@@ -46,7 +49,19 @@ export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callCol
             }, Math.max(5, cfg.colabProgressDelaySeconds || 15) * 1000);
           }
           try {
-            try { result = await (deps.callColab || callColab)(actualPrompt, cfg); }
+            try {
+              result = await (deps.callColab || callColab)(actualPrompt, cfg);
+              if(cfg.colabProgress!==false && result.ok && result.finalAgent==='colab' && before) {
+                try {
+                  const after=await (deps.getColabRuntimeStatus||getColabRuntimeStatus)(cfg);
+                  if(after.runtime && after.status==='existing') {
+                    const reused=before.runtime===after.runtime && before.status==='existing';
+                    const label=after.runtime.slice(-8);
+                    await deps.sendTelegram(msg.target,reused?'♻️ Colab: runtime reutilizado ('+label+').':'✅ Colab: novo runtime preparado ('+label+').');
+                  }
+                } catch(e) {api.logger.warn('[smart-router] postflight status unavailable: '+String(e.message).slice(0,120));}
+              }
+            }
             catch (err) {
               api.logger.warn(`[smart-router] Colab unavailable: ${String(err.message).slice(0,160)}`);
               if (cfg.colabFallback === 'pair') {

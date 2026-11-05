@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {callColab,parseEnvValue} from '../colab.mjs';
+import {callColab,parseEnvValue,getColabRuntimeStatus} from '../colab.mjs';
 import {createHandler,DEFAULTS} from '../index.js';
 
 test('reads configured key',()=>assert.equal(parseEnvValue('X=1\nCOLAB_GATEWAY_API_KEY="abc"\n','COLAB_GATEWAY_API_KEY'),'abc'));
@@ -33,4 +33,41 @@ test('normal local routing does not require Colab installed',async()=>{
  const handler=createHandler(api,{...DEFAULTS,telegramMode:'prefix',allowedTelegramIds:['42']},{dispatch:async()=>({ok:true,output:'pair reply',finalAgent:'pair'}),callColab:async()=>{throw Error('should not call Colab')},sendTelegram:async(...x)=>sends.push(x)});
  await handler({channel:'telegram',content:'!route Hello',senderId:'42',messageId:'21'},{channelId:'telegram',conversationId:'42'});
  assert.deepEqual(sends,[['42','pair reply']]);
+});
+
+test('runtime status uses authenticated GET without a GPU inference',async()=>{
+ const seen=[];
+ const status=await getColabRuntimeStatus({},{
+  readFileImpl:async()=> 'COLAB_GATEWAY_API_KEY=secret',
+  fetchImpl:async(url,opts)=>{seen.push({url:String(url),opts});return {ok:true,json:async()=>({status:'existing',runtime:'runtimes/r-test123'})};}
+ });
+ assert.deepEqual(status,{status:'existing',runtime:'runtimes/r-test123'});
+ assert.equal(seen[0].opts.method,'GET');
+ assert.equal(seen[0].opts.headers.Authorization,'Bearer secret');
+ assert.ok(seen[0].url.endsWith('/v1/runtime-status'));
+ await assert.rejects(getColabRuntimeStatus({colabGatewayUrl:'https://example.com/v1/chat/completions'}),/local loopback/);
+});
+test('reports reused Colab runtime through Telegram',async()=>{
+ const sends=[],states=[{status:'existing',runtime:'runtimes/r-test123'},{status:'existing',runtime:'runtimes/r-test123'}];
+ const api={logger:{warn(){},error(){},info(){}}};
+ const handler=createHandler(api,{...DEFAULTS,telegramMode:'prefix',allowedTelegramIds:['42']},{
+  getColabRuntimeStatus:async()=>states.shift(),callColab:async()=>({ok:true,output:'done',finalAgent:'colab'}),
+  dispatch:async()=>{throw Error('unexpected')},sendTelegram:async(_target,text)=>sends.push(text)
+ });
+ await handler({channel:'telegram',content:'!route !colab hello',senderId:'42',messageId:'r1'},{channelId:'telegram',conversationId:'42'});
+ assert.match(sends[0],/GPU existente/);
+ assert.ok(sends.some(x=>x.includes('runtime reutilizado')));
+ assert.equal(sends.at(-1),'[Colab T4] done');
+});
+test('reports new runtime after missing previous GPU',async()=>{
+ const sends=[],states=[{status:'missing',runtime:'runtimes/r-old'},{status:'existing',runtime:'runtimes/r-new'}];
+ const api={logger:{warn(){},error(){},info(){}}};
+ const handler=createHandler(api,{...DEFAULTS,telegramMode:'prefix',allowedTelegramIds:['42']},{
+  getColabRuntimeStatus:async()=>states.shift(),callColab:async()=>({ok:true,output:'ok',finalAgent:'colab'}),
+  dispatch:async()=>{throw Error('unexpected')},sendTelegram:async(_target,text)=>sends.push(text)
+ });
+ await handler({channel:'telegram',content:'!route !colab hello',senderId:'42',messageId:'r2'},{channelId:'telegram',conversationId:'42'});
+ assert.match(sends[0],/novo runtime/);
+ assert.ok(sends.some(x=>x.includes('novo runtime preparado')));
+ assert.equal(sends.at(-1),'[Colab T4] ok');
 });
