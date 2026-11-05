@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {chooseRoute,selectNativeModels,PairInventory,estimateTokens,requiredTokens} from './routing-policy.mjs';
-import {createNativeRouting,LANGUAGE_INSTRUCTION} from './native-routing.mjs';
-import {ColabHistory} from './colab-history.mjs';
-import {createHandler,DEFAULTS} from './index.js';
-import {callColab,getColabRuntimeStatus} from './colab.mjs';
-import {dispatch} from './dispatch.mjs';
+import {chooseRoute,selectNativeModels,PairInventory,estimateTokens,requiredTokens} from '../routing-policy.mjs';
+import {createNativeRouting,LANGUAGE_INSTRUCTION} from '../native-routing.mjs';
+import {ColabHistory} from '../colab-history.mjs';
+import {createHandler,DEFAULTS} from '../index.js';
+import {callColab,getColabRuntimeStatus} from '../colab.mjs';
+import {dispatch} from '../dispatch.mjs';
 
 const PAIR='nvpair/unsloth/Qwen3-4B-Instruct-2507-GGUF:Q4_K_M';
 const COLAB='colab/colab-t4';

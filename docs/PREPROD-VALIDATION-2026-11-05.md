@@ -42,3 +42,43 @@ Automated result: 8 passed, 0 failed.
 6. **Rollback**: rehearse actual plugin/config switch on staging and verify session continuity after rolling back to the previous build. No destructive database cleanup.
 
 **Decision: NO-GO for automatic native routing production.** The existing production Gateway remains on commit 228e020, using the stable explicit-prefix mode. PR #4 and PR #5 remain unmerged.
+
+
+## Follow-up live staging battery, 2026-11-05
+
+### Real isolated Colab 8K and 16K
+- One T4 GPU was provisioned under a SEPARATE staging Autopilot state and port 18081. Zero runtimes existed beforehand. Production Colab port 18080 and state were not altered.
+- 8K context: HTTP 200, CONTEXT_OK, 4,221 prompt tokens, 3 completion tokens, 204.5 seconds including provisioning; Ollama total 101.1 seconds.
+- 16K first attempt: HTTP 502 in 34.1 seconds due to a 30-second Autopilot health check timeout.
+- Raised health probe timeout to 180 seconds ONLY in the staging Autopilot code copy.
+- 16K context: HTTP 200, CONTEXT_OK, 11,621 prompt tokens, 3 completion tokens, 22.2 seconds, Ollama total 12.8 seconds.
+- GPU read-only metrics: Tesla T4, 15,360 MiB total, 5,003 MiB used, 9,910 MiB free.
+- Explicitly deleted the runtime owned by staging and cleared its state; production Colab service stayed active.
+- PASS: direct 8K/16K inference. Does not guarantee all arbitrary 16K requests.
+
+### Actual failure-route tests, loopback-only mock providers
+- Mock 18082 returned HTTP 503; mock 18083 returned MOCK_CLOUD_FALLBACK_OK. No external API used.
+- PAIR inventory unavailable -> native routing selected mocked Colab and returned success. PASS for preflight fallback.
+- PAIR inventory available but actual model HTTP 503 -> OpenClaw retried the same model repeatedly and ultimately failed after approximately 84 seconds, no Colab request. FAIL for in-run fallback.
+- Inspected installed OpenClaw v2026.10.9: resolveHookModelSelection applies providerOverride and modelOverride, but NOT the fallbacksOverride property returned by the Smart Router hook. Existing unit tests did not exercise this integration boundary.
+- Added a static allowed fallback list of Colab in staging: HTTP 503 retries grew transcript until Context overflow after approximately 139 seconds, no successful Colab fallback. FAIL.
+- BLOCKING: native automatic failure fallback and bounded retry/context growth must be corrected before production.
+
+### Mocked cloud consent (real stage)
+- Added cloudmock/mock as a local OpenAI-compatible provider on port 18083 with a dummy key, no paid API provider.
+- Both consent gates true and no eligible free provider -> cloudmock/mock selected and returned success. PASS.
+- Both consent gates false -> mock success counter stayed at 2 before and after a failed request. PASS for no unauthorized cloud calls.
+- No live paid API calls were made.
+
+### Real same-session concurrency and rollback
+- Two concurrent CLI requests using SAME OpenClaw stage-native-002 session both returned ORBIT-4729, exited 0 and were logged as separate runs. PASS.
+- Switched isolated staging to a COPY of the old production plugin in prefix mode, verified plugin source, config validation, Gateway health, and remembered ORBIT-4729. PASS.
+- Restored experimental plugin, restarted isolated staging, verified health and remembered ORBIT-4729. PASS.
+- Production plugin, session databases and Telegram service were unchanged.
+
+### Observability
+- Logged chosen provider, reason, estimated tokens, actual provider HTTP status, mock request counts, measured Ollama prompt/completion usage, elapsed time and read-only GPU VRAM. PARTIAL: no per-node VRAM inventory or complete live cost dashboard.
+- OpenClaw prompt preflight differs substantially from router's estimated budget; the 6K floor is only a conservative heuristic.
+
+### Release conclusion
+NO-GO for native automatic failure fallback. The actual runtime ignores the proposed dynamic fallback property; static fallback suffered unbounded retries and context overflow. Real Colab 16K, mock cloud gating, concurrency and rollback passed. Telegram E2E still requires a separate staging bot. Production remains on stable explicit-prefix Smart Router.
