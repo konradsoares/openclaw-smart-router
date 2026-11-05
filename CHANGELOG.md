@@ -1,6 +1,10 @@
 # Changelog
 
 ## Unreleased
+
+### Added
+- Telegram progress distinguishes existing and new Colab runtimes using authenticated read-only status probes; generic fallback when status is unavailable.
+
 - Use stable opaque Telegram conversation identifiers for routed OpenClaw CLI sessions.
 - Add regression tests for same-conversation reuse and conversation isolation.
 - Cross-agent and direct Colab history continuity remain pending.
