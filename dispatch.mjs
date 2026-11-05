@@ -1,13 +1,14 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { spawnCapture } from './telegram.mjs';
 import { classify } from './dispatch-policy.mjs';
 
-export async function dispatch(message, cfg = {}, force = 'auto', runner = spawnCapture) {
+export async function dispatch(message, cfg = {}, force = 'auto', runner = spawnCapture, {sessionKey} = {}) {
   const decision = classify(message, cfg, force);
   if (decision.blocked) {
     return { ok: false, output: '', finalAgent: 'none', decision, error: 'Explicit cloud authorization required for tool requests. Use !route !cloud.' };
   }
-  const id = `smart-router-${randomUUID()}`;
+  // Stable for the same conversation, opaque in logs and CLI arguments.
+  const id = sessionKey ? `smart-router-${createHash('sha256').update(String(sessionKey)).digest('hex').slice(0,24)}` : `smart-router-${randomUUID()}`;
   const localAgent = cfg.localAgent || 'pair';
   const cloudAgent = cfg.cloudAgent || 'main';
   const agentCall = async (agent, suffix = '') => {

@@ -356,3 +356,7 @@ Open an issue with sanitized OpenClaw version, hook metadata, and reproducible l
 ## License
 
 MIT. Community project; not affiliated with NVIDIA, Google, OpenAI, or the OpenClaw maintainers.
+
+### Telegram session continuity (staging change)
+
+For routed local/cloud CLI calls, the router now derives a stable opaque session identifier from the Telegram target. This preserves repeated requests to the **same OpenClaw agent** across messages. Separate agents may still have independent session stores, and the direct Colab HTTP route still needs explicit history propagation; cross-backend memory is not yet solved.
