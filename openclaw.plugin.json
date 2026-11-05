@@ -24,9 +24,11 @@
         "type": "string",
         "enum": [
           "off",
-          "prefix"
+          "prefix",
+          "native"
         ],
-        "default": "off"
+        "default": "off",
+        "description": "prefix intercepts !route commands; native leaves Telegram turns to OpenClaw and chooses model through hooks; off disables interception."
       },
       "telegramPrefix": {
         "type": "string",
@@ -108,6 +110,97 @@
         "minimum": 5,
         "maximum": 120,
         "default": 15
+      },
+      "replyInUserLanguage": {
+        "type": "boolean",
+        "default": true,
+        "description": "Direct Colab replies use the latest user language."
+      },
+      "nativeRouting": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": false
+          },
+          "pairModelsUrl": {
+            "type": "string",
+            "default": "http://127.0.0.1:8080/v1/models"
+          },
+          "localModels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "model",
+                "contextWindow"
+              ],
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "contextWindow": {
+                  "type": "integer",
+                  "minimum": 1024
+                },
+                "maxOutputTokens": {
+                  "type": "integer",
+                  "minimum": 64
+                },
+                "supportsTools": {
+                  "type": "boolean",
+                  "default": false
+                }
+              }
+            },
+            "default": []
+          },
+          "colabModel": {
+            "type": "string",
+            "default": ""
+          },
+          "cloudModel": {
+            "type": "string",
+            "default": ""
+          },
+          "allowPaidCloud": {
+            "type": "boolean",
+            "default": false
+          },
+          "systemTokens": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 1600
+          },
+          "unknownHistoryTokens": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 2048
+          },
+          "toolTokens": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 2000
+          },
+          "safetyFraction": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.15
+          },
+          "colabContextWindow": {
+            "type": "integer",
+            "minimum": 1024,
+            "default": 4096
+          },
+          "colabMaxOutputTokens": {
+            "type": "integer",
+            "minimum": 64,
+            "default": 1024
+          }
+        }
       }
     }
   }

@@ -3,8 +3,9 @@ import { parseTelegram, sendTelegram } from './telegram.mjs';
 import { classify } from './dispatch-policy.mjs';
 import { callColab, getColabRuntimeStatus } from './colab.mjs';
 import { ColabHistory } from './colab-history.mjs';
+import { createNativeRouting } from './native-routing.mjs';
 
-export const DEFAULTS = { mode: 'route', telegramMode: 'off', telegramPrefix: '!route', localAgent: 'pair', cloudAgent: 'main', localMaxChars: 800, maxPromptChars: 1500, dispatcherTimeoutSeconds: 45, allowedTelegramIds: [], deliveryMethod: 'cli', colabGatewayUrl: 'http://127.0.0.1:18080/v1/chat/completions', colabTimeoutSeconds: 300, colabFallback: 'pair', colabProgress: true, colabProgressDelaySeconds: 15, allowCloudFallback: false };
+export const DEFAULTS = { mode: 'route', telegramMode: 'off', telegramPrefix: '!route', localAgent: 'pair', cloudAgent: 'main', localMaxChars: 800, maxPromptChars: 1500, dispatcherTimeoutSeconds: 45, allowedTelegramIds: [], deliveryMethod: 'cli', colabGatewayUrl: 'http://127.0.0.1:18080/v1/chat/completions', colabTimeoutSeconds: 300, colabFallback: 'pair', colabProgress: true, colabProgressDelaySeconds: 15, allowCloudFallback: false, replyInUserLanguage: true };
 
 export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callColab, getColabRuntimeStatus }) {
   const inFlight = new Set();
@@ -42,7 +43,7 @@ export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callCol
           let progressTimer;
           let progressSent = Promise.resolve();
           if (cfg.colabProgress !== false) {
-            const initial=before?.status==='existing'?'♻️ Colab: GPU existente detectada, verificando Ollama. Deve responder mais rápido.':before?.status==='starting'?'⏳ Colab: runtime existente ainda sendo preparado. Pode demorar alguns minutos.':before?.status==='missing'||before?.status==='absent'?'🆕 Colab: não há GPU própria disponível. Preparando um novo runtime; a primeira resposta pode demorar alguns minutos.':'⏳ Colab selected. Checking the T4 GPU. If no runtime is available, one will be started automatically.';
+            const initial=before?.status==='existing'?'♻️ Colab: existing GPU found. Checking Ollama; this should be faster.':before?.status==='starting'?'⏳ Colab: existing runtime is still starting; this may take a few minutes.':before?.status==='missing'||before?.status==='absent'?'🆕 Colab: no owned GPU is available. Starting a new runtime; the first response may take a few minutes.':'⏳ Colab selected. Checking the T4 GPU. If no runtime is available, one will be started automatically.';
             await deps.sendTelegram(msg.target,initial);
             progressTimer = setTimeout(() => {
               progressSent = Promise.resolve(deps.sendTelegram(msg.target, '⏳ Still waiting for Colab. The GPU and model may be initializing.')).catch(e => {
@@ -57,7 +58,7 @@ export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callCol
             catch (err) {
               api.logger.warn(`[smart-router] Colab unavailable: ${String(err.message).slice(0,160)}`);
               if (cfg.colabFallback === 'pair') {
-                if (cfg.colabProgress !== false) await deps.sendTelegram(msg.target, '⚠️ Colab indisponível. Tentando o agente local.');
+                if (cfg.colabProgress !== false) await deps.sendTelegram(msg.target, '⚠️ Colab is unavailable. Trying the local agent.');
                 result = await deps.dispatch(actualPrompt, cfg, 'local', undefined, {sessionKey:msg.target});
               } else result = {ok:false,output:'',finalAgent:'colab'};
             }
@@ -72,7 +73,7 @@ export function createHandler(api, cfg, deps = { dispatch, sendTelegram, callCol
               if(after.runtime && after.status==='existing') {
                 const reused=before.runtime===after.runtime && before.status==='existing';
                 const label=after.runtime.slice(-8);
-                await deps.sendTelegram(msg.target,reused?'♻️ Colab: runtime reutilizado ('+label+').':'✅ Colab: novo runtime preparado ('+label+').');
+                await deps.sendTelegram(msg.target,reused?'♻️ Colab: reused runtime ('+label+').':'✅ Colab: new runtime ready ('+label+').');
               }
             } catch(e) {api.logger.warn('[smart-router] postflight status unavailable: '+String(e.message).slice(0,120));}
           }
@@ -96,12 +97,8 @@ export default {
     const cfg = { ...DEFAULTS, ...(api.pluginConfig || {}) };
     api.logger.info(`[smart-router] beta enabled telegramMode=${cfg.telegramMode}`);
     api.on('before_dispatch', createHandler(api, cfg));
-    // Log-only: do not override model resolution of main or specialised agents.
-    api.on('before_model_resolve', (event, ctx) => {
-      if (ctx?.agentId !== cfg.cloudAgent) return;
-      const choice = classify(event?.prompt, cfg);
-      api.logger.info(`[smart-router] model resolve observed route=${choice.agent} reason=${choice.reason}`);
-      return undefined;
-    });
+    const native = createNativeRouting({cfg,logger:api.logger});
+    api.on('before_prompt_build',native.promptContext);
+    api.on('before_model_resolve',native.resolve);
   }
 };

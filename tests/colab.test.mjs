@@ -6,7 +6,7 @@ import {createHandler,DEFAULTS} from '../index.js';
 test('reads configured key',()=>assert.equal(parseEnvValue('X=1\nCOLAB_GATEWAY_API_KEY="abc"\n','COLAB_GATEWAY_API_KEY'),'abc'));
 test('sends authenticated OpenAI chat request',async()=>{
  let called;const result=await callColab('hello',{}, {readFileImpl:async()=> 'COLAB_GATEWAY_API_KEY=secret',fetchImpl:async(url,opts)=>{called={url:String(url),opts};return {ok:true,json:async()=>({choices:[{message:{content:'hello back'}}]})}}});
- assert.equal(result.output,'hello back');assert.equal(called.opts.headers.Authorization,'Bearer secret');assert.deepEqual(JSON.parse(called.opts.body).messages,[{role:'user',content:'hello'}]);
+ assert.equal(result.output,'hello back');assert.equal(called.opts.headers.Authorization,'Bearer secret');assert.equal(JSON.parse(called.opts.body).messages[0].role,'system');assert.deepEqual(JSON.parse(called.opts.body).messages.slice(1),[{role:'user',content:'hello'}]);
 });
 test('rejects remote gateway addresses',async()=>await assert.rejects(callColab('x',{colabGatewayUrl:'https://evil.example/v1/chat/completions'}),/local loopback/));
 test('explicit colab command delivers answer',async()=>{
@@ -55,8 +55,8 @@ test('reports reused Colab runtime through Telegram',async()=>{
   dispatch:async()=>{throw Error('unexpected')},sendTelegram:async(_target,text)=>sends.push(text)
  });
  await handler({channel:'telegram',content:'!route !colab hello',senderId:'42',messageId:'r1'},{channelId:'telegram',conversationId:'42'});
- assert.match(sends[0],/GPU existente/);
- assert.ok(sends.some(x=>x.includes('runtime reutilizado')));
+ assert.match(sends[0],/existing GPU/);
+ assert.ok(sends.some(x=>x.includes('reused runtime')));
  assert.equal(sends.at(-1),'[Colab T4] done');
 });
 test('reports new runtime after missing previous GPU',async()=>{
@@ -67,7 +67,7 @@ test('reports new runtime after missing previous GPU',async()=>{
   dispatch:async()=>{throw Error('unexpected')},sendTelegram:async(_target,text)=>sends.push(text)
  });
  await handler({channel:'telegram',content:'!route !colab hello',senderId:'42',messageId:'r2'},{channelId:'telegram',conversationId:'42'});
- assert.match(sends[0],/novo runtime/);
- assert.ok(sends.some(x=>x.includes('novo runtime preparado')));
+ assert.match(sends[0],/new runtime/);
+ assert.ok(sends.some(x=>x.includes('new runtime ready')));
  assert.equal(sends.at(-1),'[Colab T4] ok');
 });

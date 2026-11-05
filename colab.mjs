@@ -32,10 +32,15 @@ export async function callColab(prompt, cfg = {}, {fetchImpl=fetch, readFileImpl
   const messages=Array.isArray(prompt)?prompt:[{role:'user',content:prompt}];
   if(!messages.length || messages.length>32 || messages.some(m=>!m||!['user','assistant'].includes(m.role)||typeof m.content!=='string'||m.content.length>12000))
     throw Error('Invalid Colab conversation messages');
+  // System instructions are request-scoped, not retained as Telegram user turns.
+  const framedMessages = cfg.replyInUserLanguage === false ? messages : [
+    {role:'system',content:'Reply in the same language as the most recent user message, unless the user explicitly requests another language. Do not switch languages based on system notifications, quoted text, or earlier messages. Keep technical commands and identifiers unchanged.'},
+    ...messages
+  ];
   const response = await fetchImpl(url, {
     method: 'POST',
     headers: {'Authorization': `Bearer ${apiKey}`, 'Content-Type':'application/json'},
-    body: JSON.stringify({model: 'colab-t4', stream: false, messages}),
+    body: JSON.stringify({model: 'colab-t4', stream: false, messages:framedMessages}),
     signal: AbortSignal.timeout((cfg.colabTimeoutSeconds || 300) * 1000)
   });
   const data = await response.json().catch(() => ({}));

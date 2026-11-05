@@ -55,7 +55,9 @@ test('Colab OpenAI gateway receives full conversation messages',async()=>{
   fetchImpl:async(_url,opts)=>{payload=JSON.parse(opts.body);return {ok:true,json:async()=>({choices:[{message:{content:'Lembre-se'}}]})};}
  });
  assert.equal(result.ok,true);
- assert.deepEqual(payload.messages,messages);
+ assert.equal(payload.messages[0].role,'system');
+ assert.match(payload.messages[0].content,/same language/);
+ assert.deepEqual(payload.messages.slice(1),messages);
 });
 test('Telegram handler retains recent Colab turns across messages',async()=>{
  const sent=[],captured=[];

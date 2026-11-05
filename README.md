@@ -368,3 +368,10 @@ The Telegram router checks the authenticated, local Colab runtime-status endpoin
 ### Colab conversation context (experimental)
 
 Direct Telegram Colab requests now send a bounded, per-conversation user/assistant history (up to eight recent exchanges, capped at 12,000 characters). Conversations are isolated by Telegram conversation target; no history is sent to the local/cloud routes. Only successful Colab replies are added. Calls from the same conversation are serialized to preserve ordering. History is process-local and will be cleared when the OpenClaw gateway restarts. This is **not persistent memory**; model context is rebuilt from the recent messages on each request, independent of GPU lifetime.
+
+
+### Native token-aware model routing (experimental; disabled by default)
+
+Operational messages sent by the router to Telegram are in **English**. Natural-language responses are instructed to follow the language of the last user message. When direct Colab is used, a per-request system instruction controls language without entering the user's conversation history.
+
+For a future single OpenClaw session that can switch local PAIR, Colab and cloud models using native provider/model overrides, see [the routing design](docs/NATIVE-ROUTING-DESIGN.md). Native model routing is **opt-in** using telegramMode=native and nativeRouting.enabled=true. It considers live PAIR inventory, effective context window, estimated prompt and history tokens, system context, tool allowance, response reserve and safety margin. Paid cloud requires explicit two-part opt-in; Colab requires a registered OpenClaw provider. The present implementation has **unit tests only**; staging validation of provider interoperability and cross-backend session preservation is required before activation.
