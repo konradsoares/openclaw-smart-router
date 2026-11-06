@@ -123,3 +123,11 @@ NO-GO for native automatic failure fallback. The actual runtime ignores the prop
 - Introduced opt-in dualMode.background; before_dispatch returns handled immediately and the asynchronous in-process task delivers stage messages later, avoiding a long held Telegram admission/session lane. Jobs are **not persisted** across Gateway restarts.
 - Staging sets dualMode.background=true and colabTimeoutSeconds=300 to allow cold-start experiments; default background=false. Production untouched.
 - 65 unit tests passed, including confirmation that hook admission finishes before the delayed Colab job. Real end-to-end success after these fixes remains unverified.
+
+## Telegram live cross-model and dual completion 2026-11-06 01:47–01:51 UTC
+- Telegram !colab re-used isolated DM history from earlier PAIR turn and correctly replied PHOENIX-7316. Native route logged forced-colab, Colab HTTP 200 (205653 ms including cold provisioning), Telegram delivered.
+- Telegram !pair immediately afterward replied PHOENIX-7316, native route logged forced-pair, PAIR HTTP 200 (7834 ms). Context pressure was already estimatedPromptTokens=8673 versus promptBudgetBeforeReserve=8640 (the OpenClaw compact-only admission allowed it).
+- Telegram !dual test 01:51:19 returned immediate acknowledgement/progress, delivered separate PAIR draft and Colab synthesis, and logged dual-mode completed at 01:51:39. PASS for actual dual-model sequential execution with progressive Telegram delivery.
+- Quality limitation: PAIR response ended mid-section; the direct request used max_tokens=350. Colab repeated overly categorical claims rather than independently critiquing PAIR.
+- Subsequent improvement: max_tokens increased to 700 but initial PAIR requested <=180 words and complete sentences; Colab requested to independently evaluate draft against cost/energy, privacy, cold-start/reliability and to correct mistakes. 65 tests PASS. Improved quality not yet confirmed end-to-end.
+- Clarification: !dual calls separate inference endpoints directly; it does not append its input/output to the native Telegram conversation memory. Native !pair/!colab share the native OpenClaw Telegram session. Real HTTP 503 dynamic fallback and cold-start reliability remain NO-GO.

@@ -15,8 +15,8 @@ async function callPair(text,cfg,{fetchImpl=fetch}={}) {
  const model=(cfg.nativeRouting?.localModels?.[0]?.model||'').replace(/^nvpair\//,'');
  if(!model)throw Error('Missing local model');
  const response=await fetchImpl(url,{method:'POST',headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(45000),
- body:JSON.stringify({model,stream:false,max_tokens:350,messages:[
-  {role:'system',content:'You are the local PAIR analyst. Reply in the language of the user question. Give one concise, concrete analysis; no claims about sources you did not check.'},
+ body:JSON.stringify({model,stream:false,max_tokens:700,messages:[
+  {role:'system',content:'You are the local PAIR analyst. Reply in the language requested by the user. Limit your preliminary response to at most 180 words and finish all sections with complete sentences. Consider trade-offs and exceptions rather than claiming any backend is always superior. Do not claim to have tested hardware, verified metrics, or checked external sources.'},
   {role:'user',content:text}
  ]})});
  if(!response.ok)throw Error('PAIR HTTP '+response.status);
@@ -33,7 +33,7 @@ export async function runDual(text,cfg={},deps={}) {
  const local=await pairCall(question,cfg);
  if(deps.onPair)await deps.onPair(local);
  const colabMessages=[
-  {role:'user',content:'Act as a reviewer and synthesizer. The next assistant message is a preliminary answer from the local PAIR model, not a verified fact. On the next user message, critically evaluate it, correct errors, add useful complementary reasoning, and answer in the language of that final user message. Keep the answer concise.'},
+  {role:'user',content:'You are the Colab reviewer. The following assistant message is a *draft* from PAIR, not a verified source. Review it independently for errors, excessive generalizations and missing trade-offs before answering the original question. Explicitly correct important inaccuracies, and offer a practical recommendation with conditions rather than blindly agreeing. Consider hardware/energy cost of local inference, Colab availability and runtime expiry, cloud privacy implications, context/model capability, and cold-start latency when relevant. Do not invent benchmarks or suggest either backend is universally better. Write a COMPLETE answer in the original user-requested language, at most 230 words.'},
   {role:'assistant',content:local.slice(0,1700)},
   {role:'user',content:question}
  ];
