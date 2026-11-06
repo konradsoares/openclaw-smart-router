@@ -47,3 +47,11 @@ test('no retrieved evidence does not produce invented correction',()=>{
  const facts=extractDocumentFacts({sourcesConsulted:[{...research.sourcesConsulted[0],retrieved:false}]});
  assert.deepEqual(assessDualAnswer('O contexto nativo do Qwen3-4B-Instruct-2507 é de até 128K tokens.',facts),[]);
 });
+
+test('denial of official evidence is distinct from native context ceiling',()=>{
+ const message='Nao ha evidencia oficial que confirme o contexto nativo do Qwen3-4B-Instruct-2507 como 128K ou 262.144 tokens. Modelos de 4B exigem mais de 32 GB de VRAM.';
+ const findings=assessDualAnswer(message,extractDocumentFacts(research));
+ assert.ok(findings.some(f=>f.id==='official-context-evidence-denied'));
+ assert.ok(!findings.some(f=>f.id==='native-context-conflict'));
+ assert.ok(findings.some(f=>f.id==='ram-minimum-unverified'));
+});
