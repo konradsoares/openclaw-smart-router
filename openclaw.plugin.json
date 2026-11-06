@@ -237,6 +237,15 @@
               "propsUrl": {"type": "string", "default": "http://127.0.0.1:8080/props"}
             }
           },
+          "resilience": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Opt-in bounded retries for transient Colab gateway HTTP 502/503/504 in direct dual mode only. Never routes to paid APIs.",
+            "properties": {
+              "enabled": {"type": "boolean", "default": false},
+              "maxRetries": {"type": "integer", "minimum": 0, "maximum": 2, "default": 1}
+            }
+          },
           "research": {
             "type": "object",
             "additionalProperties": false,

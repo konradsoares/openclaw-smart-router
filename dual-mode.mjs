@@ -6,6 +6,7 @@ import {collectDualEvidence,evidencePolicy,formatDualEvidence} from './dual-evid
 import {researchOfficialDocs} from './dual-research.mjs';
 import {extractDocumentFacts,assessDualAnswer,formatFactCheck} from './dual-fact-check.mjs';
 import {auditReviewCitations} from './dual-citation-audit.mjs';
+import {callColabWithRecovery} from './dual-recovery.mjs';
 
 export function splitDualPrompt(input) {
  const text=String(input||'').trim();
@@ -56,7 +57,7 @@ export async function runDual(text,cfg={},deps={}) {
   {role:'assistant',content:local.slice(0,1700)},
   {role:'user',content:question}
  ];
- const colab=await timed('colab','colabMs',()=>colabCall(colabMessages,{...cfg,replyInUserLanguage:true}));
+ const colab=await timed('colab','colabMs',()=>callColabWithRecovery(colabMessages,{...cfg,replyInUserLanguage:true},colabCall,{sleep:deps.sleep,onRetry:deps.onRetry}));
  const colabText=typeof colab==='string'?colab:colab?.output;
  if(!colabText?.trim())throw Error('Colab returned empty answer');
  const verifiedUrls=(research?.sourcesConsulted||[]).filter(x=>x?.retrieved===true&&typeof x.url==='string').map(x=>x.url);
@@ -124,7 +125,8 @@ export function createDualHandler(api,cfg,deps={}) {
        const values=['pairMs','deliveryMs','evidenceMs','researchMs','colabMs','totalMs'].map(k=>k+'='+(Number.isFinite(m[k])?Math.round(m[k]):'none'));
        api.logger.info('[smart-router] dual-metrics '+values.join(' ')+' researchSources='+Math.min(2,Math.max(0,m.researchSources||0))+' factCheckFindings='+Math.max(0,Number(m.factCheckFindings)||0)+' finalStage='+String(m.stage).slice(0,12));
       };
-      const result=await (deps.run||runDual)(data.prompt,cfg,{onPair,onMetrics});
+      const onRetry=({attempt,delayMs})=>api.logger.warn('[smart-router] dual-colab-transient-retry attempt='+attempt+' delayMs='+delayMs);
+      const result=await (deps.run||runDual)(data.prompt,cfg,{onPair,onMetrics,onRetry});
       if(!pairWasDelivered)await send(data.target,result.combined);
       else await send(data.target,'Colab T4 (review and synthesis):\n'+result.colab);
       api.logger.info('[smart-router] dual-mode completed pair+colab, chat authorized');
