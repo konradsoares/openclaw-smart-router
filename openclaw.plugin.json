@@ -225,6 +225,15 @@
             "type": "boolean",
             "default": false,
             "description": "Return Telegram hook immediately while an in-process staging-only dual job sends progress and results. Jobs do not survive restart."
+          },
+          "verification": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Read-only PAIR model inventory evidence for dual review; no command execution or web access.",
+            "properties": {
+              "enabled": {"type": "boolean", "default": false},
+              "inventoryUrl": {"type": "string", "default": "http://127.0.0.1:8080/v1/models"}
+            }
           }
         }
       }

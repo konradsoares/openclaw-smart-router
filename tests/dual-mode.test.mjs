@@ -18,7 +18,8 @@ test('dual sends original question to PAIR, then PAIR analysis to Colab for synt
  const steps=[];
  const result=await runDual('O que é GPU?',cfg,{callPair:async(text)=>{steps.push(['pair',text]);return 'Resposta local';},callColab:async(text)=>{steps.push(['colab',text]);return {output:'Síntese no Colab'};}});
  assert.deepEqual(steps.map(x=>x[0]),['pair','colab']);
- assert.equal(steps[1][1][1].content,'Resposta local');
+ assert.equal(steps[1][1][2].content,'Resposta local');
+ assert.match(steps[1][1][1].content,/externalResearchPerformed/);
  assert.equal(steps[1][1].at(-1).content,'O que é GPU?');
  assert.match(result.combined,/Resposta local/);
  assert.match(result.combined,/Síntese no Colab/);

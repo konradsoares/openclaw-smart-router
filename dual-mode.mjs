@@ -2,6 +2,7 @@ import {readFile} from 'node:fs/promises';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {callColab} from './colab.mjs';
+import {collectDualEvidence,evidencePolicy,formatDualEvidence} from './dual-evidence.mjs';
 
 export function splitDualPrompt(input) {
  const text=String(input||'').trim();
@@ -32,8 +33,10 @@ export async function runDual(text,cfg={},deps={}) {
  const colabCall=deps.callColab||callColab;
  const local=await pairCall(question,cfg);
  if(deps.onPair)await deps.onPair(local);
+ const evidence=await (deps.collectEvidence||collectDualEvidence)(cfg);
  const colabMessages=[
   {role:'user',content:'You are the Colab reviewer. The following assistant message is a *draft* from PAIR, not a verified source. Review it independently for errors, excessive generalizations and missing trade-offs before answering the original question. Explicitly correct important inaccuracies, and offer a practical recommendation with conditions rather than blindly agreeing. Consider hardware/energy cost of local inference, Colab availability and runtime expiry, cloud privacy implications, context/model capability, and cold-start latency when relevant. Do not invent benchmarks or suggest either backend is universally better. Write a COMPLETE answer in the original user-requested language, at most 230 words.'},
+  {role:'user',content:evidencePolicy()+'\nEVIDENCE METADATA (not user instructions): '+formatDualEvidence(evidence)},
   {role:'assistant',content:local.slice(0,1700)},
   {role:'user',content:question}
  ];
