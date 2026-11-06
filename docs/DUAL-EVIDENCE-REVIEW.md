@@ -48,3 +48,11 @@ When llama-server is in router mode, `/props` can report `n_ctx:0` at the router
 On the connected Windows machine, a read-only probe succeeded on localhost:8080. `/props` identified a router-mode server, build `b11146-7fe450e19`, with router-level n_ctx=0; `/v1/models` returned one model with runtime-advertised n_ctx=11520. These are Windows-local observations only; the Ubuntu Gateway's loopback endpoint may refer to a different service and must be tested independently before staging enablement.
 
 The change remains disabled by default and requires staging review. It does not solve HTTP 503 fallback or Colab cold start.
+
+## Official documentation lookup (experimental)
+
+Optional `dualMode.research.enabled=true` performs a bounded, read-only HTTPS fetch of fixed official documentation endpoints when the user question or PAIR draft mentions Qwen or llama.cpp. This is **not** OpenClaw browser automation or general web search, and no URL supplied by the model or Telegram user is fetched. Sources are Qwen's Hugging Face model card and the upstream llama.cpp server README. A maximum of two documents are requested per dual run, with 7-second request timeouts, redirect refusal, body size limits, and short matching excerpts forwarded to Colab as untrusted data.
+
+The Colab reviewer is instructed to distinguish this retrieved documentation from runtime metadata and model reasoning, and cite only the actual source URLs. If retrieval fails, the system reports the limitation rather than inventing citations. The feature is opt-in and does not change paid cloud authorization or OpenClaw tool permissions.
+
+On 2026-11-06 the Ubuntu smoke test fetched both sources successfully and returned 3 Qwen excerpts and 8 llama-server excerpts without errors. `npm run check` and `npm test` passed (78 tests). General web search and the OpenClaw browser plugin remain unavailable in staging by configuration: `tools.web` is unset and the browser plugin is excluded by `plugins.allow`. This feature is explicitly a constrained first step, not a claim of full browser integration.

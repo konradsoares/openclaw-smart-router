@@ -236,6 +236,12 @@
               "serverPropsEnabled": {"type": "boolean", "default": false, "description": "Opt-in read-only GET of local llama-server /props; never exposes model paths or templates."},
               "propsUrl": {"type": "string", "default": "http://127.0.0.1:8080/props"}
             }
+          },
+          "research": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Opt-in bounded official-document lookups for dual review. No general browsing or user-provided URLs.",
+            "properties": {"enabled": {"type": "boolean", "default": false}}
           }
         }
       }
