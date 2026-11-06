@@ -15,6 +15,6 @@
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check index.js && node --check dispatch.mjs && node --check telegram.mjs && node --check dispatch-policy.mjs && node --check colab.mjs && node --check colab-history.mjs && node --check native-routing.mjs && node --check routing-policy.mjs && node --check dual-mode.mjs && node --check dual-evidence.mjs && node --check dual-research.mjs && node --check dual-source-catalog.mjs && node --check dual-citation-audit.mjs && node --check dual-recovery.mjs && node --check dual-continuity.mjs && node --check dual-fact-check.mjs"
+    "check": "node --check index.js && node --check dispatch.mjs && node --check telegram.mjs && node --check dispatch-policy.mjs && node --check colab.mjs && node --check colab-history.mjs && node --check native-routing.mjs && node --check routing-policy.mjs && node --check dual-mode.mjs && node --check dual-evidence.mjs && node --check dual-research.mjs && node --check dual-source-catalog.mjs && node --check dual-citation-audit.mjs && node --check dual-recovery.mjs && node --check dual-continuity.mjs && node --check scripts/release-preflight.mjs && node --check scripts/dual-503-smoke.mjs && node --check dual-fact-check.mjs"
   }
 }

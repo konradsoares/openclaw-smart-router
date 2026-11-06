@@ -98,3 +98,9 @@ The direct `!dual` hook bypasses the normal OpenClaw agent execution and does **
 Limitations: this is a **next-turn memory bridge**, not full native transcript insertion. It requires `ctx.sessionKey` and the OpenClaw session workflow API; the plugin fails closed if either is absent, rather than guessing a Telegram-to-session mapping. A queued injection does not prove the following model run consumed it. A manual Telegram test is still required to demonstrate actual continuity after a gateway restart. No production service or session DB is modified by this feature. The only stored data is a short historical summary owned by OpenClaw's queue; opt-in is off by default.
 
 Colab retry and continuity are independent. No paid API access or arbitrary file writes are introduced. Ubuntu: `npm run check` and `npm test` passed (104 tests).
+
+## Live local 503 recovery smoke (2026-11-06)
+
+Run `node scripts/dual-503-smoke.mjs` in the isolated MacBook worktree. This script uses the real local PAIR server at `127.0.0.1:8080`, but starts a temporary unauthenticated **loopback mock** of the Colab gateway on an ephemeral port. The mock returns HTTP 503 on the first completion request and HTTP 200 on the second. The plugin calls the real authenticated Colab client with a temporary local-only test key; no actual Colab GPU, Telegram messages, production Gateway or paid APIs are accessed. The temporary mock and test key are removed when the script exits.
+
+Observed smoke result: `success=true`, PAIR answered (28 characters), Colab mock was called exactly twice, Colab stage 1,553 ms, total 6,650 ms. This is a genuine local HTTP integration check, **not** a test of OpenClaw's native fallback mechanism or a real cold-start recovery. The native inference-time HTTP 503 recovery gate remains NO-GO until proven separately.
