@@ -71,6 +71,9 @@ test('language policy is separate from English operational messages',async()=>{
  const router=createNativeRouting({cfg:{cloudAgent:'main'},logger:{warn(){},info(){}}});
  assert.match(router.promptContext({messages:[]},{agentId:'main'}).appendSystemContext,/latest user message/);
  assert.match(LANGUAGE_INSTRUCTION,/language/);
+ assert.match(LANGUAGE_INSTRUCTION,/Smart Router is an OpenClaw plugin/);
+ assert.match(LANGUAGE_INSTRUCTION,/CURRENT user message/);
+ assert.match(LANGUAGE_INSTRUCTION,/Colab provides GPU compute/);
  let body;
  await callColab('Explique o erro em português',{},{
   readFileImpl:async()=> 'COLAB_GATEWAY_API_KEY=secret',

@@ -93,3 +93,11 @@ NO-GO for native automatic failure fallback. The actual runtime ignores the prop
 - **PASS for CLI->Gateway native route, model memory and multilingual turns within one OpenClaw session on real Colab.**
 - **NOT VALIDATED**: actual Telegram inbound route hook and PAIR->Colab continuity in the user's Telegram session; requires human-sent Telegram message and log check. The previous no-prefix Telegram messages had no native-model-route logs.
 - Staging diagnostic hook temporarily records only agent/channel/session prefix, never message contents or secrets; remove after native Telegram ingress issue is diagnosed. Avoid merging diagnostic instrumented source.
+
+## Telegram native Colab diagnosis and language context fix (2026-11-06)
+- Real Telegram inbound channelId was the numeric Telegram chat ID, not telegram; previous native hook skipped routing. Corrected in 0de6cd8, matching only explicitly listed allowed Telegram IDs (and literal telegram CLI channel).
+- Telegram real ingress 00:29:33 and 00:29:51 selected colab/colab-t4 with HTTP 200, 5.695 and 6.354 sec respectively, and successful Telegram delivery. Existing PAIR-era code TIGER-8294 was recalled correctly after switching models.
+- Second real Telegram answer was in English despite the user's explicit Portuguese request and repeated an earlier non-answer about not knowing the Colab integration. Language quality was FAIL.
+- Improved prompt-build hook with explicit latest-user-language instructions and brief accurate Smart Router / PAIR / Colab project context (no secrets).
+- Staging-only Colab CLI cold start then request timed out after ~195 sec despite the owned runtime eventually reporting ready. FAIL latency/reliability. Immediate warm retry returned a relevant one-sentence answer in Portuguese in 13.12 sec. PASS for warm provider and language. Actual Telegram language re-test remains PENDING.
+- Inference-time PAIR HTTP 503 -> Colab fallback still FAIL/NO-GO: installed OpenClaw ignores hook fallbacksOverride and retry/context behavior is unbounded. Do not merge to production yet.
