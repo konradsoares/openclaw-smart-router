@@ -100,3 +100,49 @@ test('background dual acknowledges Telegram before long Colab review completes',
  assert.equal(sent.length,3);
  assert.match(sent[2],/Colab reviewed/);
 });
+
+test('dual metrics measure individual stages without recording prompts or content',async()=>{
+ let tick=0, observed;
+ const now=()=>tick;
+ const result=await runDual('test metrics',cfg,{
+  now,callPair:async()=>{tick+=13;return 'local confidential answer';},
+  onPair:async()=>{tick+=2;},
+  collectEvidence:async()=>{tick+=3;return {runtimeChecks:[]};},
+  researchDocs:async()=>{tick+=5;return {sourcesConsulted:[{url:'https://example.org/verified',retrieved:true}]};},
+  callColab:async()=>{tick+=120;return {output:'reviewed'};},
+  onMetrics:async m=>{observed=m;}
+ });
+ assert.deepEqual([observed.pairMs,observed.deliveryMs,observed.evidenceMs,observed.researchMs,observed.colabMs,observed.totalMs],[13,2,3,5,120,143]);
+ assert.equal(observed.researchSources,1);
+ assert.equal(observed.stage,'colab');
+ assert.doesNotMatch(JSON.stringify(observed),/confidential|test metrics/);
+ assert.match(result.colab,/Official documents retrieved/);
+ assert.match(result.colab,/example.org\/verified/);
+});
+test('dual logs failed stage timing without leaking prompt',async()=>{
+ let tick=0, observed;
+ await assert.rejects(runDual('private prompt',cfg,{
+  now:()=>tick,callPair:async()=>{tick+=4;return 'draft';},
+  collectEvidence:async()=>{tick+=1;return {};},
+  researchDocs:async()=>{tick+=2;return {sourcesConsulted:[]};},
+  callColab:async()=>{tick+=70;throw Error('cold start timeout');},
+  onMetrics:async m=>{observed=m;}
+ }),/cold start timeout/);
+ assert.equal(observed.colabMs,70);
+ assert.equal(observed.totalMs,77);
+ assert.equal(observed.stage,'colab');
+ assert.doesNotMatch(JSON.stringify(observed),/private prompt/);
+});
+test('retrieved source footer includes only documented successful lookups',async()=>{
+ const result=await runDual('source verification',cfg,{
+  callPair:async()=> 'local',
+  collectEvidence:async()=>({}),
+  researchDocs:async()=>({sourcesConsulted:[
+   {url:'https://official.example/doc',retrieved:true},
+   {url:'https://failed.example/doc',retrieved:false}
+  ]}),
+  callColab:async()=>({output:'review'})
+ });
+ assert.match(result.colab,/official.example/);
+ assert.doesNotMatch(result.colab,/failed.example/);
+});

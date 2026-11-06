@@ -56,3 +56,11 @@ Optional `dualMode.research.enabled=true` performs a bounded, read-only HTTPS fe
 The Colab reviewer is instructed to distinguish this retrieved documentation from runtime metadata and model reasoning, and cite only the actual source URLs. If retrieval fails, the system reports the limitation rather than inventing citations. The feature is opt-in and does not change paid cloud authorization or OpenClaw tool permissions.
 
 On 2026-11-06 the Ubuntu smoke test fetched both sources successfully and returned 3 Qwen excerpts and 8 llama-server excerpts without errors. `npm run check` and `npm test` passed (78 tests). General web search and the OpenClaw browser plugin remain unavailable in staging by configuration: `tools.web` is unset and the browser plugin is excluded by `plugins.allow`. This feature is explicitly a constrained first step, not a claim of full browser integration.
+
+## Stage timing and source provenance (2026-11-06)
+
+`runDual()` now emits per-stage durations through its optional `onMetrics` callback, implemented as a privacy-conscious Gateway info log by `createDualHandler`. Fields are `pairMs`, `deliveryMs`, `evidenceMs`, `researchMs`, `colabMs`, `totalMs`, `researchSources`, and `finalStage`. Timing is measured with a monotonic clock. Failures emit partial metrics in the `finally` block, enabling cold-start and timeout analysis even when the Colab request fails. Model inputs, answers, Telegram IDs and tokens are not included in metric logs.
+
+The response includes a router-generated `Official documents retrieved by Smart Router` section containing only successful fixed-source retrieval URLs. This section is a provenance aid, not proof that the model's interpretation of those sources is correct. It also does not filter any unsupported claims inside the model-generated answer. Always treat web excerpts as untrusted data.
+
+Ubuntu validation: `npm run check` and `npm test` passed, 81 tests total. New tests cover timing, exceptions, privacy and filtering of unsuccessful citations. Production remains unchanged. The instrumented staging process must be restarted before observing new timing logs; no inference-time HTTP 503 fallback is claimed fixed.
