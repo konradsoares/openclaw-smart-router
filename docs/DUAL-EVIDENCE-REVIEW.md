@@ -38,3 +38,13 @@ The inventory URL must be HTTP loopback, with exact `/v1/models` path and no cre
 ## Validation
 
 `npm run check && npm test` — 69 tests passing on Windows Node 22. Tests use mocked PAIR inventory and Colab requests; no live GPU provisioning or Telegram message delivery was attempted.
+
+## Optional llama-server properties
+
+Set `dualMode.verification.serverPropsEnabled=true` to also query the local, uncredentialed HTTP loopback `/props` endpoint, optionally overriding `propsUrl`. Only `GET` is used, with redirects disallowed and a four-second timeout. The plugin forwards an allowlist of fields (context, slots, build, sleeping state, router role). It deliberately drops model paths, chat templates and any additional server metadata.
+
+When llama-server is in router mode, `/props` can report `n_ctx:0` at the router level. This is NOT a usable model context; the module reports it as unknown and keeps separately observed `/v1/models` metadata. The observations are not validation of CLI flags or available GPU memory.
+
+On the connected Windows machine, a read-only probe succeeded on localhost:8080. `/props` identified a router-mode server, build `b11146-7fe450e19`, with router-level n_ctx=0; `/v1/models` returned one model with runtime-advertised n_ctx=11520. These are Windows-local observations only; the Ubuntu Gateway's loopback endpoint may refer to a different service and must be tested independently before staging enablement.
+
+The change remains disabled by default and requires staging review. It does not solve HTTP 503 fallback or Colab cold start.
