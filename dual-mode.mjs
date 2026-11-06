@@ -90,7 +90,10 @@ export function parseDual(event,ctx,cfg) {
 export async function sendDualTelegram(target,message,configPath=join(homedir(),'.openclaw-routerstage/openclaw.json'),deps={}) {
  if(!/^\d+$/.test(String(target)))throw Error('Invalid Telegram target');
  const config=JSON.parse(await (deps.readFile||readFile)(configPath,'utf8'));
- if(config?.gateway?.port!==19451)throw Error('Only routerstage may send dual mode messages');
+ const staging=config?.gateway?.port===19451;
+ const production=config?.gateway?.port===18789;
+ const approved=deps.allowProduction===true&&config?.plugins?.entries?.['smart-router']?.config?.dualMode?.productionEnabled===true;
+ if(!staging&&!(production&&approved))throw Error('Dual delivery requires routerstage or explicitly enabled production');
  const token=config?.channels?.telegram?.botToken;
  if(typeof token!=='string'||token.length<15)throw Error('Missing staging Telegram bot token');
  const fetchImpl=deps.fetchImpl||fetch;
@@ -109,7 +112,11 @@ export function createDualHandler(api,cfg,deps={}) {
   const key=data.target+':'+data.messageId;
   if(inflight.has(key))return {handled:true};
   inflight.add(key);
-  const send=deps.send||sendDualTelegram;
+  const send=deps.send||((target,message)=>{
+   const allowProduction=cfg.dualMode?.productionEnabled===true;
+   const profilePath=allowProduction?join(homedir(),'.openclaw/openclaw.json'):join(homedir(),'.openclaw-routerstage/openclaw.json');
+   return sendDualTelegram(target,message,profilePath,{allowProduction});
+  });
   const execute=async()=>{
    try {
     if(!data.prompt.trim()){

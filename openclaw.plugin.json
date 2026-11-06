@@ -217,6 +217,11 @@
             "type": "boolean",
             "default": false
           },
+          "productionEnabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Explicit production-only delivery gate; requires production profile configuration and manual approval. Default false."
+          },
           "pairUrl": {
             "type": "string",
             "default": "http://127.0.0.1:8080/v1/chat/completions"
