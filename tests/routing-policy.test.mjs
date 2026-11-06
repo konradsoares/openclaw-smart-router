@@ -90,3 +90,15 @@ test('native Colab becomes eligible only with adequate real context window',()=>
  const route=selectNativeModels({prompt:'hello',config:{nativeRouting:{localModels:[],colabModel:'colab/colab-t4',colabContextWindow:16384,systemTokens:400,unknownHistoryTokens:0}},inventory:new Map()});
  assert.equal(route.model,'colab/colab-t4');
 });
+
+test('native Telegram numeric chat IDs require router allowlist',async()=>{
+ const config={cloudAgent:'main',telegramMode:'native',allowedTelegramIds:['111223344'],nativeRouting:{enabled:true,localModels:[big],unknownHistoryTokens:0}};
+ const router=createNativeRouting({cfg:config,inventory:{get:async()=>inventory},logger:{warn(){},info(){}}});
+ const ctx={agentId:'main',channelId:'111223344',sessionKey:'agent:main:main'};
+ const selected=await router.resolve({prompt:'hello'},ctx);
+ assert.equal(selected.providerOverride,'nvpair');
+ assert.equal(selected.modelOverride,'big');
+ assert.equal(await router.resolve({prompt:'hello'},{...ctx,channelId:'998877'}),undefined);
+ assert.equal(await router.resolve({prompt:'hello'},{...ctx,channelId:'other-channel'}),undefined);
+ assert.equal(await router.resolve({prompt:'hello'},{...ctx,agentId:'different'}),undefined);
+});

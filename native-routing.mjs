@@ -17,7 +17,7 @@ export function createNativeRouting({cfg={},inventory=new PairInventory(),logger
  }
  async function resolve(event,ctx){
    const routes=cfg.nativeRouting||{};
-   if(cfg.telegramMode!=='native'||routes.enabled!==true||ctx?.agentId!==(cfg.cloudAgent||'main')||ctx?.channelId!=='telegram')return undefined;
+   if(cfg.telegramMode!=='native'||routes.enabled!==true||ctx?.agentId!==(cfg.cloudAgent||'main')||!(ctx?.channelId==='telegram'||(String(ctx?.channelId??'').length>0 && (cfg.allowedTelegramIds||[]).map(String).includes(String(ctx?.channelId)))))return undefined;
    let available;
    try {available=await inventory.get(routes.pairModelsUrl||'http://127.0.0.1:8080/v1/models');}
    catch(err){logger.warn('[smart-router] PAIR inventory unavailable: '+String(err.message).slice(0,120));available=new Map();}
