@@ -116,3 +116,10 @@ NO-GO for native automatic failure fallback. The actual runtime ignores the prop
 - Added experimental opt-in nativeRouting.forceCommandsEnabled (false by default) to select !pair or !colab inside the existing Telegram session and let users test real cross-provider memory continuity. Forced selections must respect backend eligibility and paid-cloud remains disabled.
 - Automated tests: 64 passed after adding partial-delivery and manual-routing cases. Direct live PAIR probe completed in ~6.4 seconds. Live !dual end-to-end success remains pending.
 - Staging only: dualMode.enabled=true, forceCommandsEnabled=true, PAIR context profile restored to 11520, Colab staging port 18081, production untouched. NO-GO for production; inference-time HTTP 503 fallback and Colab cold-start timeout are still blockers.
+
+## Dual background staging fix (2026-11-06)
+- 01:27 !dual Telegram call was handled by before_dispatch for 186.8 seconds and failed on Colab request timeout; PAIR intermediate result was not sent by the old version. The staging Colab Autopilot later reported ready=true.
+- Added progressive dual replies: PAIR preliminary analysis delivered as soon as generated, followed by Colab synthesis when successful. If Colab times out, the PAIR answer remains available with an explicit incomplete message.
+- Introduced opt-in dualMode.background; before_dispatch returns handled immediately and the asynchronous in-process task delivers stage messages later, avoiding a long held Telegram admission/session lane. Jobs are **not persisted** across Gateway restarts.
+- Staging sets dualMode.background=true and colabTimeoutSeconds=300 to allow cold-start experiments; default background=false. Production untouched.
+- 65 unit tests passed, including confirmation that hook admission finishes before the delayed Colab job. Real end-to-end success after these fixes remains unverified.

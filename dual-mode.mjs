@@ -79,28 +79,39 @@ export function createDualHandler(api,cfg,deps={}) {
   const key=data.target+':'+data.messageId;
   if(inflight.has(key))return {handled:true};
   inflight.add(key);
-  try {
-   if(!data.prompt.trim()){
-    await (deps.send||sendDualTelegram)(data.target,'Usage: !dual <question>');
-   }else{
-    await (deps.send||sendDualTelegram)(data.target,'Running PAIR analysis followed by Colab review (staging only).');
-    try {
-     let pairWasDelivered=false;
-     const onPair=async (local)=>{
-      await (deps.send||sendDualTelegram)(data.target,'PAIR (local) — preliminary analysis:\n'+local);
-      pairWasDelivered=true;
-     };
-     const result=await (deps.run||runDual)(data.prompt,cfg,{onPair});
-     if(!pairWasDelivered) await (deps.send||sendDualTelegram)(data.target,result.combined);
-     else await (deps.send||sendDualTelegram)(data.target,'Colab T4 (review and synthesis):\n'+result.colab);
-
-     api.logger.info('[smart-router] dual-mode completed pair+colab, chat authorized');
-    }catch(err){
-     api.logger.warn('[smart-router] dual-mode failed: '+String(err.message).slice(0,160));
-     await (deps.send||sendDualTelegram)(data.target,'Dual-mode incomplete (no combined answer): '+String(err.message).slice(0,140));
+  const send=deps.send||sendDualTelegram;
+  const execute=async()=>{
+   try {
+    if(!data.prompt.trim()){
+     await send(data.target,'Usage: !dual <question>');
+    }else{
+     await send(data.target,'Running PAIR analysis followed by Colab review (staging only).');
+     try {
+      let pairWasDelivered=false;
+      const onPair=async(local)=>{
+       await send(data.target,'PAIR (local) — preliminary analysis:\n'+local);
+       pairWasDelivered=true;
+      };
+      const result=await (deps.run||runDual)(data.prompt,cfg,{onPair});
+      if(!pairWasDelivered)await send(data.target,result.combined);
+      else await send(data.target,'Colab T4 (review and synthesis):\n'+result.colab);
+      api.logger.info('[smart-router] dual-mode completed pair+colab, chat authorized');
+     }catch(err){
+      api.logger.warn('[smart-router] dual-mode incomplete: '+String(err.message).slice(0,160));
+      await send(data.target,'Dual-mode incomplete (no combined answer): '+String(err.message).slice(0,140));
+     }
     }
-   }
-  }finally{inflight.delete(key);}
+   }catch(err){
+    api.logger.error('[smart-router] dual-mode delivery failed: '+String(err.message).slice(0,160));
+   }finally{inflight.delete(key);}
+  };
+  if(cfg.dualMode?.background===true){
+   // Do not keep the Telegram before_dispatch admission occupied during GPU provisioning.
+   // Work is in-memory only: gateway restart can interrupt a pending job.
+   void execute();
+   return {handled:true};
+  }
+  await execute();
   return {handled:true};
  };
 }

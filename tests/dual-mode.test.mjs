@@ -75,3 +75,27 @@ test('dual retains PAIR answer when Colab times out',async()=>{
  assert.match(sent[2],/incomplete/);
  assert.match(sent[2],/Colab timed out/);
 });
+
+test('background dual acknowledges Telegram before long Colab review completes',async()=>{
+ const sent=[];let release;
+ const pending=new Promise(resolve=>{release=resolve;});
+ let started;
+ const active=new Promise(resolve=>{started=resolve;});
+ const api={logger:{info(){},warn(){},error(){}}};
+ const handler=createDualHandler(api,{...cfg,dualMode:{enabled:true,background:true}},
+  {send:async(_target,msg)=>sent.push(msg),run:async(_q,_cfg,{onPair})=>{
+    await onPair('PAIR available now');
+    started();
+    await pending;
+    return {colab:'Colab reviewed',combined:'combined'};
+  }});
+ const handled=await handler(event,ctx);
+ assert.deepEqual(handled,{handled:true});
+ await active;
+ assert.match(sent[1],/PAIR available now/);
+ assert.equal(sent.length,2);
+ release();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(sent.length,3);
+ assert.match(sent[2],/Colab reviewed/);
+});
