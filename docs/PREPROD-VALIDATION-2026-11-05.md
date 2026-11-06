@@ -101,3 +101,10 @@ NO-GO for native automatic failure fallback. The actual runtime ignores the prop
 - Improved prompt-build hook with explicit latest-user-language instructions and brief accurate Smart Router / PAIR / Colab project context (no secrets).
 - Staging-only Colab CLI cold start then request timed out after ~195 sec despite the owned runtime eventually reporting ready. FAIL latency/reliability. Immediate warm retry returned a relevant one-sentence answer in Portuguese in 13.12 sec. PASS for warm provider and language. Actual Telegram language re-test remains PENDING.
 - Inference-time PAIR HTTP 503 -> Colab fallback still FAIL/NO-GO: installed OpenClaw ignores hook fallbacksOverride and retry/context behavior is unbounded. Do not merge to production yet.
+
+## Telegram isolated-session Colab verification (2026-11-06 01:02 UTC)
+- Configured staging-only OpenClaw session.dmScope=per-channel-peer after repeated non-Portuguese replies with shared agent:main:main; old session preserved. Staging Gateway restarted and health returned OK.
+- Actual Telegram message at 01:01:45 UTC: native-model-route colab/colab-t4, successful OpenClaw provider/model overrides, Colab HTTP 200 (8321ms provider elapsed), Telegram outbound send success at 01:02:02 UTC.
+- Reply was relevant and in Portuguese. PASS for real Telegram native routing, Colab inference, and current-message language after session isolation. Clean Telegram session listed separately from agent:main:main.
+- Telegram also displayed Model Fallback: colab/colab-t4 (selected nvpair/...; selected model unavailable). This is model-selection notification, not evidence of an HTTP 503: logs show HTTP 200 from Colab. Investigate OpenClaw default/persisted model metadata and notification separately.
+- CAUTION: This does not validate in-run failover from PAIR HTTP 503 or cold-start reliability. Those remain release blockers. No production configuration changed.
