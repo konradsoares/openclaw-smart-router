@@ -64,3 +64,13 @@ On 2026-11-06 the Ubuntu smoke test fetched both sources successfully and return
 The response includes a router-generated `Official documents retrieved by Smart Router` section containing only successful fixed-source retrieval URLs. This section is a provenance aid, not proof that the model's interpretation of those sources is correct. It also does not filter any unsupported claims inside the model-generated answer. Always treat web excerpts as untrusted data.
 
 Ubuntu validation: `npm run check` and `npm test` passed, 81 tests total. New tests cover timing, exceptions, privacy and filtering of unsuccessful citations. Production remains unchanged. The instrumented staging process must be restarted before observing new timing logs; no inference-time HTTP 503 fallback is claimed fixed.
+
+## Deterministic contradiction checks (2026-11-06)
+
+The optional research output now produces **source-bound structured facts** only when the successful Qwen source excerpt explicitly contains `Context Length: 262,144 natively`, or the successful upstream llama-server README excerpt explicitly contains `--ctx-size`. No facts are inferred from a page title, model assertion, or failed fetch. These facts are included in the Colab review prompt separately from raw source excerpts.
+
+After Colab replies, a deliberately narrow heuristic checks for (1) an explicit incorrect native/max context claim for Qwen3-4B-Instruct-2507, (2) `--n_ctx` presented as a valid server CLI option when documentation confirms `--ctx-size`, and (3) unqualified minimum RAM/VRAM assertions of 16/24 GB. Detected issues are **appended in a clearly attributed Smart Router evidence-check section**; the original Colab response is preserved for auditability. The check does not claim to verify all model output or automatically rewrite prose. In particular, it avoids interpreting a requested *target* of 128K as a statement of the model's native maximum.
+
+Security: only fixed allowlisted retrieved documents may produce these machine-structured facts; source text is treated as data, and no executable action is taken. Deterministic flags can still miss paraphrases or produce false positives, so the check is a guardrail rather than an independent full factual-verification system. No GPU benchmark or RAM sizing has been performed by this feature.
+
+Ubuntu validation: `npm run check` and `npm test` passed (87/87), including reproducing the earlier erroneous Colab response, false-positive rejection for statements saying `--n_ctx` is invalid, missing sources, and avoiding conflation of 128K workload with native context. Production is unchanged.
