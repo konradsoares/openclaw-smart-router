@@ -217,6 +217,11 @@
             "type": "boolean",
             "default": false
           },
+          "productionEnabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Explicit production-only delivery gate; requires production profile configuration and manual approval. Default false."
+          },
           "pairUrl": {
             "type": "string",
             "default": "http://127.0.0.1:8080/v1/chat/completions"
@@ -225,6 +230,38 @@
             "type": "boolean",
             "default": false,
             "description": "Return Telegram hook immediately while an in-process staging-only dual job sends progress and results. Jobs do not survive restart."
+          },
+          "verification": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Read-only PAIR model inventory evidence for dual review; no command execution or web access.",
+            "properties": {
+              "enabled": {"type": "boolean", "default": false},
+              "inventoryUrl": {"type": "string", "default": "http://127.0.0.1:8080/v1/models"},
+              "serverPropsEnabled": {"type": "boolean", "default": false, "description": "Opt-in read-only GET of local llama-server /props; never exposes model paths or templates."},
+              "propsUrl": {"type": "string", "default": "http://127.0.0.1:8080/props"}
+            }
+          },
+          "continuity": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Opt-in durable next-turn context injection through the supported OpenClaw session workflow API; not a transcript rewrite.",
+            "properties": {"enabled": {"type": "boolean", "default": false}}
+          },
+          "resilience": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Opt-in bounded retries for transient Colab gateway HTTP 502/503/504 in direct dual mode only. Never routes to paid APIs.",
+            "properties": {
+              "enabled": {"type": "boolean", "default": false},
+              "maxRetries": {"type": "integer", "minimum": 0, "maximum": 2, "default": 1}
+            }
+          },
+          "research": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Opt-in bounded official-document lookups for dual review. No general browsing or user-provided URLs.",
+            "properties": {"enabled": {"type": "boolean", "default": false}}
           }
         }
       }
