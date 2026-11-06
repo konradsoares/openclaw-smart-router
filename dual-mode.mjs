@@ -5,6 +5,7 @@ import {callColab} from './colab.mjs';
 import {collectDualEvidence,evidencePolicy,formatDualEvidence} from './dual-evidence.mjs';
 import {researchOfficialDocs} from './dual-research.mjs';
 import {extractDocumentFacts,assessDualAnswer,formatFactCheck} from './dual-fact-check.mjs';
+import {auditReviewCitations} from './dual-citation-audit.mjs';
 
 export function splitDualPrompt(input) {
  const text=String(input||'').trim();
@@ -60,7 +61,7 @@ export async function runDual(text,cfg={},deps={}) {
  if(!colabText?.trim())throw Error('Colab returned empty answer');
  const verifiedUrls=(research?.sourcesConsulted||[]).filter(x=>x?.retrieved===true&&typeof x.url==='string').map(x=>x.url);
  const references=verifiedUrls.length?'\n\nOfficial documents retrieved by Smart Router:\n'+verifiedUrls.join('\n'):'';
- const findings=assessDualAnswer(colabText,documentFacts);
+ const findings=[...assessDualAnswer(colabText,documentFacts),...auditReviewCitations(colabText,research)];
  const factCheck=formatFactCheck(findings);
  metrics.factCheckFindings=findings.length;
  return {pair:local,colab:colabText+factCheck+references,findings,combined:'PAIR (local):\n'+local+'\n\nColab T4 (review and synthesis):\n'+colabText+factCheck+references};

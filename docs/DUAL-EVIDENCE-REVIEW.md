@@ -74,3 +74,13 @@ After Colab replies, a deliberately narrow heuristic checks for (1) an explicit 
 Security: only fixed allowlisted retrieved documents may produce these machine-structured facts; source text is treated as data, and no executable action is taken. Deterministic flags can still miss paraphrases or produce false positives, so the check is a guardrail rather than an independent full factual-verification system. No GPU benchmark or RAM sizing has been performed by this feature.
 
 Ubuntu validation: `npm run check` and `npm test` passed (87/87), including reproducing the earlier erroneous Colab response, false-positive rejection for statements saying `--n_ctx` is invalid, missing sources, and avoiding conflation of 128K workload with native context. Production is unchanged.
+
+## Bounded multi-topic source catalog and source attribution (2026-11-06)
+
+Official-document selection is now centralized in `dual-source-catalog.mjs`. It matches the original user question (not the PAIR draft) against a fixed, read-only source catalog: Qwen3-4B, upstream llama-server, Node.js `node:fs` API, and Python `asyncio` API. At most two documents are fetched per turn. This is deliberately *not* general web search, browser automation, or user-controlled URL retrieval. New topics require review and explicit code changes to the catalog.
+
+The downloader rejects redirects, enforces a 7-second timeout per source, and caps both declared length and decompressed text length at 400,000 characters. Extracted excerpts are capped to eight lines, 260 characters each. The additional Node.js documentation was found to have a compressed HTTP Content-Length around 65 KB while its decoded text is around 318 KB; both Node.js and Python sources passed a live Ubuntu smoke test.
+
+`dual-citation-audit.mjs` performs **topic-agnostic provenance checks**, restricted to URLs that the reviewer explicitly labels as sources, references, or documentation. If Colab cites a URL not successfully retrieved in that run, a separate warning states it was *not verified by Smart Router*. Normal illustrative links are not treated as citations. This does not independently verify the factual accuracy of model output, and the older Qwen/llama-specific numerical and CLI checks remain deliberately narrow.
+
+Security notes: no browser plugin was enabled; no production configuration was changed; no paid provider was called during development tests. External excerpts remain untrusted data and are never executed as instructions. Reviewers must not interpret a retrieved URL as proof that a model paraphrase is faithful to it. Ubuntu: `npm run check` and `npm test` passed (95/95); live bounded fetches for Node.js and Python returned 8 and 4 relevant lines respectively.
