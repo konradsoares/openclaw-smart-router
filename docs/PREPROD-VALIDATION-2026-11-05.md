@@ -82,3 +82,14 @@ Automated result: 8 passed, 0 failed.
 
 ### Release conclusion
 NO-GO for native automatic failure fallback. The actual runtime ignores the proposed dynamic fallback property; static fallback suffered unbounded retries and context overflow. Real Colab 16K, mock cloud gating, concurrency and rollback passed. Telegram E2E still requires a separate staging bot. Production remains on stable explicit-prefix Smart Router.
+
+## Colab native same-session multilingual and memory probe, 2026-11-06
+- Staging only: telegramMode native, dedicated Colab Autopilot port 18081 and 16,384 Ollama num_ctx; intentionally lowered staging PAIR advertised context to 1,024 to test Colab routing. Production untouched, both paid-cloud consent gates remained false.
+- CLI entry to isolated Gateway with --channel telegram, same explicit session stage-colab-route-20261106, logged native-model-route colab/colab-t4 with reason colab-fallback.
+- First PING attempt: HTTP 200 after 198.6 sec but returned empty content; OpenClaw performed one visible-answer continuation retry. Completed response at ~244 sec. NOT an all-green latency/fidelity result.
+- Memory write: Colab answered ACK: OTTER-6418; next Portuguese retrieval (same session) correctly answered OTTER-6418 (HTTP 200, ~13.2 seconds).
+- English one-sentence response (same Colab session) correctly English, HTTP 200, ~5.9 seconds.
+- Next Portuguese one-sentence response correctly Portuguese, HTTP 200, ~5.5 seconds.
+- **PASS for CLI->Gateway native route, model memory and multilingual turns within one OpenClaw session on real Colab.**
+- **NOT VALIDATED**: actual Telegram inbound route hook and PAIR->Colab continuity in the user's Telegram session; requires human-sent Telegram message and log check. The previous no-prefix Telegram messages had no native-model-route logs.
+- Staging diagnostic hook temporarily records only agent/channel/session prefix, never message contents or secrets; remove after native Telegram ingress issue is diagnosed. Avoid merging diagnostic instrumented source.
