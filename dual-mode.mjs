@@ -7,6 +7,7 @@ import {researchOfficialDocs} from './dual-research.mjs';
 import {extractDocumentFacts,assessDualAnswer,formatFactCheck} from './dual-fact-check.mjs';
 import {auditReviewCitations} from './dual-citation-audit.mjs';
 import {callColabWithRecovery} from './dual-recovery.mjs';
+import {enqueueDualContinuity} from './dual-continuity.mjs';
 
 export function splitDualPrompt(input) {
  const text=String(input||'').trim();
@@ -129,6 +130,8 @@ export function createDualHandler(api,cfg,deps={}) {
       const result=await (deps.run||runDual)(data.prompt,cfg,{onPair,onMetrics,onRetry});
       if(!pairWasDelivered)await send(data.target,result.combined);
       else await send(data.target,'Colab T4 (review and synthesis):\n'+result.colab);
+      const persisted=await (deps.enqueueContinuity||enqueueDualContinuity)(api,{...ctx,messageId:data.messageId},cfg,{question:data.prompt,pair:result.pair,colab:result.colab,messageId:data.messageId});
+      if(cfg.dualMode?.continuity?.enabled===true)api.logger.info('[smart-router] dual-continuity status='+String(persisted?.reason||'unknown').slice(0,30));
       api.logger.info('[smart-router] dual-mode completed pair+colab, chat authorized');
      }catch(err){
       api.logger.warn('[smart-router] dual-mode incomplete: '+String(err.message).slice(0,160));

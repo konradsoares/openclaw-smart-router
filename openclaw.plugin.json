@@ -237,6 +237,12 @@
               "propsUrl": {"type": "string", "default": "http://127.0.0.1:8080/props"}
             }
           },
+          "continuity": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Opt-in durable next-turn context injection through the supported OpenClaw session workflow API; not a transcript rewrite.",
+            "properties": {"enabled": {"type": "boolean", "default": false}}
+          },
           "resilience": {
             "type": "object",
             "additionalProperties": false,
