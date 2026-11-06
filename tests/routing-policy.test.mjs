@@ -105,3 +105,19 @@ test('native Telegram numeric chat IDs require router allowlist',async()=>{
  assert.equal(await router.resolve({prompt:'hello'},{...ctx,channelId:'other-channel'}),undefined);
  assert.equal(await router.resolve({prompt:'hello'},{...ctx,agentId:'different'}),undefined);
 });
+
+test('explicit native !pair and !colab select provider without changing session key',async()=>{
+ const configuration={cloudAgent:'main',telegramMode:'native',allowedTelegramIds:['42'],allowCloudFallback:false,nativeRouting:{enabled:true,forceCommandsEnabled:true,
+  localModels:[{model:'nvpair/big',contextWindow:11520,maxOutputTokens:256}],colabModel:'colab/t4',colabContextWindow:16384,unknownHistoryTokens:0}};
+ const routes=createNativeRouting({cfg:configuration,inventory:{get:async()=>new Map([['big',{contextWindow:11520}]])},logger:{info(){},warn(){}}});
+ const ctx={agentId:'main',channelId:'42',sessionKey:'agent:main:telegram:direct:42'};
+ const pair=await routes.resolve({prompt:'!pair remember PHOENIX-7316'},ctx);
+ assert.equal(pair.providerOverride,'nvpair');
+ const colab=await routes.resolve({prompt:'!colab what is my code'},ctx);
+ assert.equal(colab.providerOverride,'colab');
+ assert.equal(colab.modelOverride,'t4');
+ assert.equal(await routes.resolve({prompt:'!colab secret'},{...ctx,channelId:'9999'}),undefined);
+ const disabled=createNativeRouting({cfg:{...configuration,nativeRouting:{...configuration.nativeRouting,forceCommandsEnabled:false}},
+  inventory:{get:async()=>new Map([['big',{contextWindow:11520}]])},logger:{info(){},warn(){}}});
+ assert.equal((await disabled.resolve({prompt:'!colab test'},ctx)).providerOverride,'nvpair');
+});

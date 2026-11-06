@@ -4,6 +4,7 @@ import { classify } from './dispatch-policy.mjs';
 import { callColab, getColabRuntimeStatus } from './colab.mjs';
 import { ColabHistory } from './colab-history.mjs';
 import { createNativeRouting } from './native-routing.mjs';
+import { createDualHandler } from './dual-mode.mjs';
 
 export const DEFAULTS = { mode: 'route', telegramMode: 'off', telegramPrefix: '!route', localAgent: 'pair', cloudAgent: 'main', localMaxChars: 800, maxPromptChars: 1500, dispatcherTimeoutSeconds: 45, allowedTelegramIds: [], deliveryMethod: 'cli', colabGatewayUrl: 'http://127.0.0.1:18080/v1/chat/completions', colabTimeoutSeconds: 300, colabFallback: 'pair', colabProgress: true, colabProgressDelaySeconds: 15, allowCloudFallback: false, replyInUserLanguage: true };
 
@@ -97,6 +98,7 @@ export default {
     const cfg = { ...DEFAULTS, ...(api.pluginConfig || {}) };
     api.logger.info(`[smart-router] beta enabled telegramMode=${cfg.telegramMode}`);
     api.on('before_dispatch', createHandler(api, cfg));
+    api.on('before_dispatch', createDualHandler(api,cfg));
     const native = createNativeRouting({cfg,logger:api.logger});
     api.on('before_prompt_build',native.promptContext);
     api.on('before_model_resolve',native.resolve);

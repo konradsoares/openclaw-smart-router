@@ -25,10 +25,24 @@ export function createNativeRouting({cfg={},inventory=new PairInventory(),logger
    let available;
    try {available=await inventory.get(routes.pairModelsUrl||'http://127.0.0.1:8080/v1/models');}
    catch(err){logger.warn('[smart-router] PAIR inventory unavailable: '+String(err.message).slice(0,120));available=new Map();}
-   const decision=selectNativeModels({
-     prompt:event?.prompt||'',historyTokens:history.get(ctx?.sessionKey)??routes.unknownHistoryTokens??1024,
-     config:cfg,inventory:available
-   });
+   const input=String(event?.prompt||'');
+   const forcedCommand=routes.forceCommandsEnabled===true?(/^\s*!(pair|colab)(?:\s|$)/i.exec(input)?.[1]?.toLowerCase()||null):null;
+   const historyTokens=history.get(ctx?.sessionKey)??routes.unknownHistoryTokens??1024;
+   let decision=selectNativeModels({prompt:input,historyTokens,config:cfg,inventory:available});
+   if(forcedCommand==='pair'){
+     const pairModel=(routes.localModels||[]).find(p=>available.has(p.model?.slice(7))&&p.model?.startsWith('nvpair/'))?.model;
+     const localOnly=selectNativeModels({prompt:input,historyTokens,
+       config:{...cfg,nativeRouting:{...routes,localModels:(routes.localModels||[]).filter(p=>p.model===pairModel),colabModel:''}},
+       inventory:available});
+     decision={...localOnly,reason:'forced-pair'};
+   }
+   if(forcedCommand==='colab'){
+     const colabOnly=selectNativeModels({prompt:input,historyTokens,
+       config:{...cfg,nativeRouting:{...routes,localModels:[]}},
+       inventory:new Map()});
+     decision={...colabOnly,reason:'forced-colab'};
+     if(decision.model && !decision.model.startsWith('colab/'))decision={...decision,model:null,fallbacks:[],reason:'forced-colab-ineligible'};
+   }
    let model=decision.model;
    if(!model){
      // Fail closed: never leave the default paid model selected by accident.

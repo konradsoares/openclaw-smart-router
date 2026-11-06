@@ -200,6 +200,26 @@
             "type": "integer",
             "minimum": 64,
             "default": 1024
+          },
+          "forceCommandsEnabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable staging-only explicit !pair and !colab model selection in an existing Telegram session. Disabled by default."
+          }
+        }
+      },
+      "dualMode": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Experimental authorized Telegram !dual command, disabled by default; serial PAIR analysis then Colab critique.",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": false
+          },
+          "pairUrl": {
+            "type": "string",
+            "default": "http://127.0.0.1:8080/v1/chat/completions"
           }
         }
       }
